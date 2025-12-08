@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Professional Blue Gradient Background -->
+    <path
+        android:pathData="M54,54m-52,0a52,52 0,1 1,104 0a52,52 0,1 1,-104 0"
+        android:fillColor="#4A90E2" />
+
+    <!-- Gradient overlay for depth (darker blue) -->
+    <path
+        android:pathData="M54,2 A52,52 0,0 1,106 54 L54,54 Z"
+        android:fillColor="#5B6FD8"
+        android:fillAlpha="0.3" />
+
+    <!-- Open Book - Left Page (White) -->
+    <path
+        android:pathData="M28,40 L28,70 Q28,72 30,72 L52,72 Q54,72 54,70 L54,40 Q54,38 52,38 L30,38 Q28,38 28,40 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Open Book - Right Page (Light Gray) -->
+    <path
+        android:pathData="M54,40 L54,70 Q54,72 56,72 L78,72 Q80,72 80,70 L80,40 Q80,38 78,38 L56,38 Q54,38 54,40 Z"
+        android:fillColor="#F0F0F0" />
+
+    <!-- Book Spine Shadow -->
+    <path
+        android:pathData="M52,38 L56,38 L56,72 L52,72 Z"
+        android:fillColor="#E0E0E0" />
+
+    <!-- Brain/Knowledge Circle (Orange Gradient) -->
+    <path
+        android:pathData="M41,52 m-8,0 a8,8 0,1 1,16 0a8,8 0,1 1,-16 0"
+        android:fillColor="#FFA726" />
+
+    <!-- Brain Symbol - Top Curve -->
+    <path
+        android:pathData="M37,52 Q37,48 41,48 Q45,48 45,52"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Brain Symbol - Bottom Curve -->
+    <path
+        android:pathData="M37,52 Q37,56 41,56 Q45,56 45,52"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Brain Symbol - Center Line -->
+    <path
+        android:pathData="M41,48 L41,56"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+    <!-- ABC Text on Right Page -->
+    <path
+        android:pathData="M62,52 L63,48 L64.5,48 L65.5,52 L67,48 L68.5,48 L66.5,54 L65,54 L63.75,50 L62.5,54 L61,54 L59,48 L60.5,48 Z
+                     M69,52 Q69,48 72,48 Q74,48 74,50 L72.5,50 Q72.5,49 72,49 Q71,49 71,51 Q71,53 72,53 Q72.5,53 72.5,52 L74,52 Q74,54 72,54 Q69,54 69,52 Z"
+        android:fillColor="#4A90E2" />
+
+    <!-- 123 Text (smaller, below ABC) -->
+    <path
+        android:pathData="M63,61 L63,59 L64,59 L64,63 L63,63 Z
+                     M65,61 Q65,59 66.5,59 Q68,59 68,60 L67,60 Q67,59.5 66.5,59.5 Q66,59.5 66,60.5 Q66,61 66.5,61 L67,61 L67,61.5 L66.5,61.5 Q66,61.5 66,62.5 Q66,63 66.5,63 Q67,63 67,62.5 L68,62.5 Q68,64 66.5,64 Q65,64 65,62.5 Q65,61.5 66,61.5 Q65,61.5 65,61 Z
+                     M69,61 Q69,59 70.5,59 Q72,59 72,60 L71,60 Q71,59.5 70.5,59.5 Q70,59.5 70,60.5 Q70,61.5 70.5,61.5 Q71,61.5 71,62 L72,62 Q72,64 70.5,64 Q69,64 69,62.5 Q69,61.5 70,61.5 Q69,61.5 69,61 Z"
+        android:fillColor="#7B8A9E" />
+
+    <!-- Achievement Stars - Top Left -->
+    <path
+        android:pathData="M24,32 m-2.5,0 a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0"
+        android:fillColor="#FFD700" />
+
+    <!-- Achievement Stars - Top Right -->
+    <path
+        android:pathData="M84,32 m-2.5,0 a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0"
+        android:fillColor="#FFD700" />
+
+    <!-- Learning Stars - Bottom Left -->
+    <path
+        android:pathData="M24,76 m-2,0 a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+        android:fillColor="#4ECDC4" />
+
+    <!-- Learning Stars - Bottom Right -->
+    <path
+        android:pathData="M84,76 m-2,0 a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+        android:fillColor="#4ECDC4" />
+
+    <!-- Learning Path Arrow Curve -->
+    <path
+        android:pathData="M35,78 Q54,82 73,78"
+        android:strokeColor="#4ECDC4"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:strokeAlpha="0.6" />
+
+    <!-- Arrow Head -->
+    <path
+        android:pathData="M70,76 L73,78 L70,80"
+        android:strokeColor="#4ECDC4"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:strokeAlpha="0.6" />
+
+</vector>

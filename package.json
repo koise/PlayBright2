@@ -1,0 +1,26 @@
+{
+  "name": "playbright",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "Web/frontend",
+    "Web/backend"
+  ],
+  "scripts": {
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --workspace=Web/backend\" \"npm run dev --workspace=Web/frontend\"",
+    "dev:web": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --workspace=Web/backend\" \"npm run dev --workspace=Web/frontend\"",
+    "dev:backend": "npm run dev --workspace=Web/backend",
+    "dev:frontend": "npm run dev --workspace=Web/frontend",
+    "install:all": "npm install",
+    "build": "npm run build --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

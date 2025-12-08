@@ -1,0 +1,20 @@
+{
+  "name": "@playbright/shared",
+  "version": "1.0.0",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "zod": "^3.22.4",
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "private": true
+}
+

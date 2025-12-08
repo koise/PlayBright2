@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "94110522316",
+    "project_id": "playbright-4c1cd",
+    "storage_bucket": "playbright-4c1cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94110522316:android:994cf5906426d35d09db69",
+        "android_client_info": {
+          "package_name": "com.example.playbright"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "94110522316-1jpkh6hlcm37krh3jfsp2m63l6rdehgu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAF3FWAumS-qL8Ob6j2LY18YgpyUPjV-zQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "94110522316-1jpkh6hlcm37krh3jfsp2m63l6rdehgu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

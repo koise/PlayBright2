@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- Base application theme - Material Design 3 -->
+    <style name="Theme.PlayBright" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary colors -->
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/primary_light</item>
+        <item name="colorOnPrimaryContainer">@color/primary_dark</item>
+        
+        <!-- Secondary colors -->
+        <item name="colorSecondary">@color/accent_orange</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/accent_light</item>
+        <item name="colorOnSecondaryContainer">@color/accent_dark</item>
+        
+        <!-- Tertiary colors -->
+        <item name="colorTertiary">@color/gold</item>
+        <item name="colorOnTertiary">@color/white</item>
+        
+        <!-- Error colors -->
+        <item name="colorError">@color/wrong_answer</item>
+        <item name="colorOnError">@color/white</item>
+        
+        <!-- Surface colors -->
+        <item name="colorSurface">@color/surface_light</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        
+        <!-- Background -->
+        <item name="android:colorBackground">@color/bg_light</item>
+        <item name="colorOnBackground">@color/text_primary</item>
+        
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        
+        <!-- Window -->
+        <item name="android:windowBackground">@color/bg_light</item>
+    </style>
+    
+    <style name="Theme.PlayBright.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+    
+</resources>

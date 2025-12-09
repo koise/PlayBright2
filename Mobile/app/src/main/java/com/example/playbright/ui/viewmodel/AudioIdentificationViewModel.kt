@@ -47,12 +47,6 @@ class AudioIdentificationViewModel : ViewModel() {
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
-    private val _starsEarned = MutableLiveData<Int>(0)
-    val starsEarned: LiveData<Int> = _starsEarned
-
-    private val _questionStars = MutableLiveData<Map<Int, Boolean>>(emptyMap())
-    val questionStars: LiveData<Map<Int, Boolean>> = _questionStars
-
     private val _correctAnswers = MutableLiveData<Int>(0)
     val correctAnswers: LiveData<Int> = _correctAnswers
 
@@ -62,7 +56,6 @@ class AudioIdentificationViewModel : ViewModel() {
     private val _originalTotalQuestions = MutableLiveData<Int>(0)
     val originalTotalQuestions: LiveData<Int> = _originalTotalQuestions
 
-    private val questionStarsMap = mutableMapOf<Int, Boolean>()
     private val answerResults = mutableMapOf<String, Boolean>()
 
     fun loadQuestions() {
@@ -71,13 +64,17 @@ class AudioIdentificationViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                android.util.Log.d("AudioIdentificationViewModel", "Loading questions for module: $MODULE_ID")
                 val response = repository.getAudioIdentifications(
                     moduleId = MODULE_ID,
                     status = "Active"
                 )
 
+                android.util.Log.d("AudioIdentificationViewModel", "Response status: ${response.isSuccessful}, Code: ${response.code()}")
+                
                 if (response.isSuccessful) {
                     val questionsList = response.body() ?: emptyList()
+                    android.util.Log.d("AudioIdentificationViewModel", "Loaded ${questionsList.size} questions from backend")
                     
                     // Shuffle questions for random order
                     val shuffledQuestions = questionsList.shuffled()
@@ -89,14 +86,18 @@ class AudioIdentificationViewModel : ViewModel() {
                         _originalTotalQuestions.value = shuffledQuestions.size // Store original total
                         updateProgress()
                         loadProgress()
+                        android.util.Log.d("AudioIdentificationViewModel", "✅ Questions loaded successfully")
                     } else {
+                        android.util.Log.w("AudioIdentificationViewModel", "⚠️ No questions found for module: $MODULE_ID")
                         _error.value = "No questions available for this module. Please add questions in the admin panel."
                     }
                 } else {
                     val errorBody = response.errorBody()?.string() ?: response.message()
+                    android.util.Log.e("AudioIdentificationViewModel", "❌ Failed to load questions: ${response.code()} - $errorBody")
                     _error.value = "Failed to load questions: $errorBody"
                 }
             } catch (e: Exception) {
+                android.util.Log.e("AudioIdentificationViewModel", "❌ Exception loading questions: ${e.message}", e)
                 val errorMessage = ApiErrorHandler.handleError(e)
                 _error.value = errorMessage
             } finally {
@@ -116,17 +117,7 @@ class AudioIdentificationViewModel : ViewModel() {
                     val progressData = response.body()?.data
                     progressData?.let {
                         _score.value = it.score
-                        _starsEarned.value = it.starsEarned
                         _currentQuestionIndex.value = it.currentQuestion
-
-                        val starsMap = mutableMapOf<Int, Boolean>()
-                        it.questionsAnswered?.forEachIndexed { index, answer ->
-                            if (answer.isCorrect) {
-                                starsMap[index] = true
-                            }
-                        }
-                        questionStarsMap.putAll(starsMap)
-                        _questionStars.value = questionStarsMap.toMap()
 
                         // Update current question and restore totals
                         val questionsList = _questions.value ?: emptyList()
@@ -173,13 +164,6 @@ class AudioIdentificationViewModel : ViewModel() {
             val newScore = (_score.value ?: 0) + 1
             _score.value = newScore
             _correctAnswers.value = (_correctAnswers.value ?: 0) + 1
-            
-            val currentIndex = _currentQuestionIndex.value ?: 0
-            if (!questionStarsMap.containsKey(currentIndex) || questionStarsMap[currentIndex] != true) {
-                questionStarsMap[currentIndex] = true
-                _questionStars.value = questionStarsMap.toMap()
-                _starsEarned.value = (_starsEarned.value ?: 0) + 1
-            }
         } else {
             _wrongAnswers.value = (_wrongAnswers.value ?: 0) + 1
         }
@@ -211,7 +195,7 @@ class AudioIdentificationViewModel : ViewModel() {
                     wrongAnswers = _wrongAnswers.value
                 )
 
-                repository.updateProgress(request)
+                repository.updateProgress(studentId, MODULE_ID, request)
             } catch (e: Exception) {
                 // Silently fail - progress will be synced later
             }
@@ -257,7 +241,7 @@ class AudioIdentificationViewModel : ViewModel() {
                 )
 
                 android.util.Log.d("AudioIdentification", "Saving final statistics: score=$finalScore, correct=$finalCorrect, wrong=$finalWrong, total=${questionsList.size}")
-                repository.updateProgress(request)
+                repository.updateProgress(studentId, MODULE_ID, request)
                 android.util.Log.d("AudioIdentification", "Final statistics saved successfully")
             } catch (e: Exception) {
                 android.util.Log.e("AudioIdentification", "Error marking module as completed: ${e.message}", e)
@@ -291,11 +275,8 @@ class AudioIdentificationViewModel : ViewModel() {
         _score.value = 0
         _progress.value = 0
         _isCompleted.value = false
-        _starsEarned.value = 0
         _correctAnswers.value = 0
         _wrongAnswers.value = 0
-        questionStarsMap.clear()
-        _questionStars.value = emptyMap()
         answerResults.clear()
 
         if (reshuffledQuestions.isNotEmpty()) {
@@ -325,8 +306,7 @@ class AudioIdentificationViewModel : ViewModel() {
             "total" to originalTotal, // Original total questions
             "totalAttempted" to totalAttempted, // Total questions attempted
             "percentage" to percentage,
-            "score" to (_score.value ?: 0),
-            "starsEarned" to (_starsEarned.value ?: 0)
+            "score" to (_score.value ?: 0)
         )
     }
 }

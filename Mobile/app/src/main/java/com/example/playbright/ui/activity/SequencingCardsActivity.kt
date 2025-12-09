@@ -17,12 +17,14 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.playbright.R
 import com.example.playbright.databinding.ActivitySequencingCardsBinding
 import com.example.playbright.ui.viewmodel.SequencingCardsViewModel
+import com.example.playbright.utils.SoundManager
 import com.google.android.material.card.MaterialCardView
 
 class SequencingCardsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySequencingCardsBinding
     private val viewModel: SequencingCardsViewModel by viewModels()
+    private lateinit var soundManager: SoundManager
     
     private var selectedOrder = mutableListOf<Int>() // Track which original card index is selected for each position (1, 2, 3, 4)
     private val imageCards = mutableListOf<MaterialCardView>()
@@ -40,12 +42,18 @@ class SequencingCardsActivity : AppCompatActivity() {
             val moduleIdFromIntent = intent.getStringExtra("MODULE_ID") ?: "sequencing-cards"
             viewModel.setModuleId(moduleIdFromIntent)
 
+            // Initialize SoundManager
+            soundManager = SoundManager.getInstance(this)
+            
             setupToolbar()
             setupObservers()
             setupClickListeners()
 
             binding.layoutQuiz.visibility = View.VISIBLE
             binding.layoutCompletion.visibility = View.GONE
+            
+            // Start background music
+            soundManager.startBackgroundMusic()
 
             // Initialize image cards and badges
             imageCards.addAll(listOf(
@@ -107,7 +115,7 @@ class SequencingCardsActivity : AppCompatActivity() {
         }
 
         viewModel.score.observe(this) { score ->
-            binding.tvScore.text = "$score"
+            binding.tvScore.text = "Score: $score"
         }
 
         viewModel.progress.observe(this) { progress ->
@@ -188,7 +196,14 @@ class SequencingCardsActivity : AppCompatActivity() {
     }
 
     private fun updateCardUI(card: com.example.playbright.data.model.SequencingCardResponse) {
+        // Animate title entrance
+        binding.tvTitle.alpha = 0f
         binding.tvTitle.text = card.title
+        binding.tvTitle.animate()
+            .alpha(1f)
+            .setDuration(400)
+            .start()
+        
         resetSelection()
         loadImages(card)
     }
@@ -199,11 +214,14 @@ class SequencingCardsActivity : AppCompatActivity() {
         // Shuffle the indices to randomize display order
         shuffledIndices = (0 until cards.size).shuffled()
         
-        // Load up to 4 images in shuffled order
+        // Load up to 4 images in shuffled order with staggered animation
         for (displayIndex in 0 until minOf(4, cards.size)) {
             val originalIndex = shuffledIndices[displayIndex]
             val cardItem = cards[originalIndex]
             val imageUrl = cardItem.getImageUrlString()
+            
+            // Hide cards initially for animation
+            imageCards[displayIndex].alpha = 0f
             
             if (imageUrl.isNotEmpty()) {
                 Glide.with(this)
@@ -217,10 +235,51 @@ class SequencingCardsActivity : AppCompatActivity() {
                 imageViews[displayIndex].setImageResource(R.drawable.ic_placeholder_image)
             }
             
-            // Make card visible and ensure badge is properly initialized
+            // Make card visible and ensure overlay is properly initialized
             imageCards[displayIndex].visibility = View.VISIBLE
-            orderBadges[displayIndex].visibility = View.GONE // Reset badge visibility
-            orderBadges[displayIndex].bringToFront() // Ensure badge is on top layer
+            
+            // Animate card entrance with stagger
+            Handler(Looper.getMainLooper()).postDelayed({
+                val popInAnim = AnimationUtils.loadAnimation(this, R.anim.pop_in)
+                imageCards[displayIndex].startAnimation(popInAnim)
+                imageCards[displayIndex].animate()
+                    .alpha(1f)
+                    .setDuration(400)
+                    .start()
+            }, (displayIndex * 100L))
+            
+            // Reset overlay - but ensure it's in the right z-order
+            val overlay = orderBadges[displayIndex]
+            overlay.visibility = View.GONE
+            overlay.text = ""
+            overlay.isClickable = false
+            overlay.isFocusable = false
+            
+            // Get parent and ensure proper structure - overlay should be on top
+            val parentFrame = overlay.parent as? android.view.ViewGroup
+            parentFrame?.bringChildToFront(overlay) // Keep overlay on top even when hidden
+            overlay.elevation = 50f
+            overlay.translationZ = 50f
+            overlay.bringToFront()
+            
+            // Re-set click listener to ensure it works after image load
+            imageCards[displayIndex].setOnClickListener {
+                android.util.Log.d("SequencingCards", "🟢 Card $displayIndex clicked directly")
+                
+                // Add pulse animation on click
+                val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.pulse)
+                imageCards[displayIndex].startAnimation(pulseAnim)
+                
+                Handler(Looper.getMainLooper()).postDelayed({
+                    handleImageSelection(displayIndex)
+                }, 100)
+            }
+            
+            // Ensure card is clickable and focusable
+            imageCards[displayIndex].isClickable = true
+            imageCards[displayIndex].isFocusable = true
+            
+            android.util.Log.d("SequencingCards", "✅ Card $displayIndex setup complete - clickable: ${imageCards[displayIndex].isClickable}")
         }
         
         // Hide unused cards
@@ -231,15 +290,27 @@ class SequencingCardsActivity : AppCompatActivity() {
     }
 
     private fun handleImageSelection(displayIndex: Int) {
-        // Prevent double-tap/rapid taps
-        if (isProcessingSelection) return
+        android.util.Log.d("SequencingCards", "🔵 handleImageSelection called with displayIndex: $displayIndex")
+        android.util.Log.d("SequencingCards", "   isProcessingSelection: $isProcessingSelection")
+        android.util.Log.d("SequencingCards", "   shuffledIndices.size: ${shuffledIndices.size}")
+        android.util.Log.d("SequencingCards", "   orderBadges.size: ${orderBadges.size}")
+        android.util.Log.d("SequencingCards", "   imageCards.size: ${imageCards.size}")
         
-        val currentCard = viewModel.currentCard.value ?: return
+        // Prevent double-tap/rapid taps
+        if (isProcessingSelection) {
+            android.util.Log.w("SequencingCards", "⚠️ Selection is being processed, ignoring click")
+            return
+        }
+        
+        val currentCard = viewModel.currentCard.value ?: run {
+            android.util.Log.w("SequencingCards", "⚠️ No current card available")
+            return
+        }
         val cards = currentCard.cards
         
         // Ensure shuffledIndices is initialized and displayIndex is valid
         if (shuffledIndices.isEmpty() || displayIndex >= shuffledIndices.size || displayIndex >= orderBadges.size) {
-            android.util.Log.w("SequencingCards", "Invalid displayIndex: $displayIndex, shuffledIndices.size: ${shuffledIndices.size}, badges.size: ${orderBadges.size}")
+            android.util.Log.w("SequencingCards", "❌ Invalid displayIndex: $displayIndex, shuffledIndices.size: ${shuffledIndices.size}, badges.size: ${orderBadges.size}")
             return
         }
         
@@ -277,26 +348,30 @@ class SequencingCardsActivity : AppCompatActivity() {
         
         // Add to selection (store original index)
         selectedOrder.add(originalIndex)
-        val badge = orderBadges[displayIndex]
-        badge.text = "$nextOrder" // Show number without parentheses for cleaner look
+        val overlay = orderBadges[displayIndex]
+        overlay.text = "$nextOrder" // Show number 1, 2, 3, or 4
         
-        // Make sure badge is visible and on top - do this before animation
-        badge.visibility = View.VISIBLE
-        badge.elevation = 20f // Ensure badge is above other views
+        // CRITICAL: Get parent FrameLayout FIRST and bring overlay to front BEFORE making visible
+        val parentFrame = overlay.parent as? android.view.ViewGroup
+        parentFrame?.bringChildToFront(overlay)
         
-        // Get parent FrameLayout and bring badge to front
-        val parentFrame = badge.parent as? android.view.ViewGroup
-        parentFrame?.bringChildToFront(badge)
-        parentFrame?.elevation = 10f // Ensure parent is also elevated
+        // Make sure overlay is visible and on top - do this AFTER bringing to front
+        overlay.visibility = View.VISIBLE
+        overlay.bringToFront() // Explicitly bring to front
         
-        // Also bring the card to front to ensure badge is visible
-        imageCards[displayIndex].bringToFront()
+        // Set high elevation to ensure it's above everything
+        overlay.elevation = 50f
+        overlay.translationZ = 50f
         
-        // Add animation to badge for better visibility
-        badge.alpha = 0f
-        badge.scaleX = 0.5f
-        badge.scaleY = 0.5f
-        badge.animate()
+        // Ensure parent FrameLayout has proper z-ordering
+        parentFrame?.elevation = 15f
+        parentFrame?.translationZ = 15f
+        
+        // Add animation to overlay for better visibility
+        overlay.alpha = 0f
+        overlay.scaleX = 0.5f
+        overlay.scaleY = 0.5f
+        overlay.animate()
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
@@ -310,7 +385,10 @@ class SequencingCardsActivity : AppCompatActivity() {
         // Add haptic feedback for better user experience
         imageCards[displayIndex].performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
         
-        android.util.Log.d("SequencingCards", "Badge $nextOrder shown on image $displayIndex, badge visibility: ${badge.visibility}, text: ${badge.text}")
+        android.util.Log.d("SequencingCards", "✅ Overlay $nextOrder shown on image $displayIndex")
+        android.util.Log.d("SequencingCards", "   Overlay visibility: ${overlay.visibility}, text: '${overlay.text}'")
+        android.util.Log.d("SequencingCards", "   Overlay elevation: ${overlay.elevation}, translationZ: ${overlay.translationZ}")
+        android.util.Log.d("SequencingCards", "   Parent elevation: ${parentFrame?.elevation}")
         
         updateOrderDisplay()
         
@@ -321,24 +399,31 @@ class SequencingCardsActivity : AppCompatActivity() {
     }
 
     private fun updateOrderBadges() {
-        // Update all badges based on current selection
-        orderBadges.forEachIndexed { displayIndex, badge ->
+        // Update all overlays based on current selection
+        orderBadges.forEachIndexed { displayIndex, overlay ->
             if (displayIndex < shuffledIndices.size) {
                 val originalIndex = shuffledIndices[displayIndex]
                 if (selectedOrder.contains(originalIndex)) {
                     val order = selectedOrder.indexOf(originalIndex) + 1
-                    badge.text = "$order" // Show number without parentheses
-                    badge.visibility = View.VISIBLE
-                    badge.bringToFront() // Ensure badge is always on top
+                    overlay.text = "$order" // Show number 1, 2, 3, or 4
                     
-                    // Get parent FrameLayout and bring badge to front
-                    val parentFrame = badge.parent as? android.view.ViewGroup
-                    parentFrame?.bringChildToFront(badge)
+                    // CRITICAL: Bring to front BEFORE making visible
+                    val parentFrame = overlay.parent as? android.view.ViewGroup
+                    parentFrame?.bringChildToFront(overlay)
+                    
+                    overlay.visibility = View.VISIBLE
+                    overlay.bringToFront()
+                    
+                    // Ensure high elevation
+                    overlay.elevation = 50f
+                    overlay.translationZ = 50f
+                    parentFrame?.elevation = 15f
+                    parentFrame?.translationZ = 15f
                 } else {
-                    badge.visibility = View.GONE
+                    overlay.visibility = View.GONE
                 }
             } else {
-                badge.visibility = View.GONE
+                overlay.visibility = View.GONE
             }
         }
     }
@@ -455,24 +540,64 @@ class SequencingCardsActivity : AppCompatActivity() {
     }
 
     private fun showSuccessFeedback() {
-        binding.ivStar.visibility = View.VISIBLE
-        val animation = AnimationUtils.loadAnimation(this, R.anim.bounce)
-        binding.ivStar.startAnimation(animation)
+        // Play success sound
+        soundManager.playSuccessSound()
+        
+        // Animate all cards with success
+        imageCards.forEach { card ->
+            card.animate()
+                .scaleX(1.05f)
+                .scaleY(1.05f)
+                .setDuration(200)
+                .withEndAction {
+                    card.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(200)
+                        .start()
+                }
+                .start()
+        }
         
         Handler(Looper.getMainLooper()).postDelayed({
-            binding.ivStar.visibility = View.GONE
             binding.btnNext.visibility = View.VISIBLE
+            val slideUpAnim = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in)
+            binding.btnNext.startAnimation(slideUpAnim)
+            
             binding.btnCheck.visibility = View.GONE
-        }, 2000)
+        }, 1800)
     }
 
     private fun showErrorFeedback() {
-        Toast.makeText(this, "Not quite right. Try again!", Toast.LENGTH_SHORT).show()
+        // Play error sound
+        soundManager.playErrorSound()
+        
+        // Shake all cards
+        val shakeAnim = AnimationUtils.loadAnimation(this, R.anim.shake)
+        imageCards.forEach { card ->
+            card.startAnimation(shakeAnim)
+        }
+        
+        Toast.makeText(this, "🤔 Not quite right. Try again!", Toast.LENGTH_SHORT).show()
     }
 
     private fun showCompletionScreen() {
-        binding.layoutQuiz.visibility = View.GONE
-        binding.layoutCompletion.visibility = View.VISIBLE
+        // Fade out quiz layout
+        binding.layoutQuiz.animate()
+            .alpha(0f)
+            .setDuration(300)
+            .withEndAction {
+                binding.layoutQuiz.visibility = View.GONE
+                binding.layoutQuiz.alpha = 1f
+                
+                binding.layoutCompletion.alpha = 0f
+                binding.layoutCompletion.visibility = View.VISIBLE
+                binding.layoutCompletion.animate()
+                    .alpha(1f)
+                    .setDuration(400)
+                    .start()
+            }
+            .start()
 
         val statistics = viewModel.getStatistics()
         val correct = statistics["correct"] as Int
@@ -480,24 +605,89 @@ class SequencingCardsActivity : AppCompatActivity() {
         val totalAttempted = statistics["totalAttempted"] as Int
         val percentage = statistics["percentage"] as Int
         val score = statistics["score"] as Int
-        val starsEarned = statistics["starsEarned"] as Int
+        // Animate text
+        binding.tvFinalScore.alpha = 0f
+        binding.tvFinalScore.text = "🎯 Perfect Order! 🎯"
+        binding.tvFinalScore.animate()
+            .alpha(1f)
+            .setDuration(500)
+            .setStartDelay(300)
+            .start()
 
-        binding.tvFinalScore.text = "Module Complete!"
-        binding.tvScoreText.text = "You scored $score out of $totalAttempted!\nEarned $starsEarned stars"
+        binding.tvScoreText.alpha = 0f
+        binding.tvScoreText.text = "You scored $score out of $totalAttempted!"
+        binding.tvScoreText.animate()
+            .alpha(1f)
+            .setDuration(500)
+            .setStartDelay(600)
+            .start()
 
         binding.tvCorrectCount.text = "$correct"
         binding.tvWrongCount.text = "$wrong"
         binding.tvAccuracy.text = "$percentage%"
 
-        // Ensure final statistics are saved to Firebase
-        // markModuleAsCompleted() is already called in nextCard(), but we ensure it's saved here too
         viewModel.markModuleAsCompleted()
 
-        val animation = AnimationUtils.loadAnimation(this, R.anim.celebration)
-        binding.ivTrophy.startAnimation(animation)
+        // Trophy animation
+        binding.ivTrophy.alpha = 0f
+        binding.ivTrophy.scaleX = 0f
+        binding.ivTrophy.scaleY = 0f
+        
+        Handler(Looper.getMainLooper()).postDelayed({
+            binding.ivTrophy.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(600)
+                .setInterpolator(android.view.animation.BounceInterpolator())
+                .start()
+            
+            val celebrationAnim = AnimationUtils.loadAnimation(this, R.anim.sparkle_rotate)
+            binding.ivTrophy.startAnimation(celebrationAnim)
+        }, 400)
+        
+        // Animate buttons
+        binding.btnPlayAgain.alpha = 0f
+        binding.btnPlayAgain.translationY = 50f
+        binding.btnPlayAgain.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(400)
+            .setStartDelay(1000)
+            .start()
+        
+        binding.btnHome.alpha = 0f
+        binding.btnHome.translationY = 50f
+        binding.btnHome.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(400)
+            .setStartDelay(1100)
+            .start()
     }
 
     private fun Int.dpToPx(): Int {
         return (this * resources.displayMetrics.density).toInt()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        if (::soundManager.isInitialized) {
+            soundManager.pauseBackgroundMusic()
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        if (::soundManager.isInitialized) {
+            soundManager.resumeBackgroundMusic()
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::soundManager.isInitialized) {
+            soundManager.stopBackgroundMusic()
+        }
     }
 }

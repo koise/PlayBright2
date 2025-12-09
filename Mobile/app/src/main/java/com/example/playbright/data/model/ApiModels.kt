@@ -6,7 +6,8 @@ import com.google.gson.annotations.SerializedName
 
 data class ApiResponse(
     @SerializedName("status") val status: String?,
-    @SerializedName("message") val message: String?
+    @SerializedName("message") val message: String?,
+    @SerializedName("data") val data: Any?
 )
 
 data class CountResponse(
@@ -299,8 +300,13 @@ data class PictureLabelResponse(
     @SerializedName("id") val id: String,
     @SerializedName("word") val word: String,
     @SerializedName("imageUrl") val imageUrl: String,
+    @SerializedName("audioText") val audioText: String? = null,
+    @SerializedName("audioUrl") val audioUrl: String? = null,
+    @SerializedName("category") val category: String? = null,
     @SerializedName("moduleId") val moduleId: String,
-    @SerializedName("status") val status: String
+    @SerializedName("status") val status: String,
+    @SerializedName("createdAt") val createdAt: String? = null,
+    @SerializedName("updatedAt") val updatedAt: String? = null
 )
 
 data class CreatePictureLabelRequest(
@@ -319,10 +325,22 @@ data class UpdatePictureLabelRequest(
 data class EmotionRecognitionResponse(
     @SerializedName("id") val id: String,
     @SerializedName("question") val question: String,
-    @SerializedName("correctAnswer") val correctAnswer: String,
-    @SerializedName("options") val options: List<EmotionOption>,
+    @SerializedName("audioText") val audioText: String? = null,
+    @SerializedName("images") val images: List<EmotionImage>? = null,
     @SerializedName("moduleId") val moduleId: String,
-    @SerializedName("status") val status: String
+    @SerializedName("status") val status: String,
+    @SerializedName("createdAt") val createdAt: String? = null,
+    @SerializedName("updatedAt") val updatedAt: String? = null,
+    // Legacy fields for backward compatibility
+    @SerializedName("correctAnswer") val correctAnswer: String? = null,
+    @SerializedName("options") val options: List<EmotionOption>? = null
+)
+
+data class EmotionImage(
+    @SerializedName("id") val id: String,
+    @SerializedName("url") val url: String,
+    @SerializedName("emotion") val emotion: String,
+    @SerializedName("isCorrect") val isCorrect: Boolean
 )
 
 data class EmotionOption(
@@ -348,11 +366,22 @@ data class UpdateEmotionRecognitionRequest(
 data class CategorySelectionResponse(
     @SerializedName("id") val id: String,
     @SerializedName("question") val question: String,
+    @SerializedName("audioText") val audioText: String? = null,
     @SerializedName("category") val category: String,
-    @SerializedName("correctAnswers") val correctAnswers: List<Int>,
-    @SerializedName("options") val options: List<CategoryOption>,
+    @SerializedName("images") val images: List<CategoryImage>? = null,
     @SerializedName("moduleId") val moduleId: String,
-    @SerializedName("status") val status: String
+    @SerializedName("status") val status: String,
+    @SerializedName("createdAt") val createdAt: String? = null,
+    @SerializedName("updatedAt") val updatedAt: String? = null,
+    // Legacy fields for backward compatibility
+    @SerializedName("correctAnswers") val correctAnswers: List<Int>? = null,
+    @SerializedName("options") val options: List<CategoryOption>? = null
+)
+
+data class CategoryImage(
+    @SerializedName("id") val id: String,
+    @SerializedName("url") val url: String,
+    @SerializedName("isCorrect") val isCorrect: Boolean
 )
 
 data class CategoryOption(
@@ -454,6 +483,35 @@ data class UpdateMatchingPairRequest(
     @SerializedName("item2Label") val item2Label: String?,
     @SerializedName("item2ImageUrl") val item2ImageUrl: String?,
     @SerializedName("category") val category: String?
+)
+
+// ==================== WORD BUILDER MODELS ====================
+
+data class WordBuilderResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("word") val word: String,
+    @SerializedName("syllables") val syllables: List<String>,
+    @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("audioText") val audioText: String?,
+    @SerializedName("audioUrl") val audioUrl: String?,
+    @SerializedName("category") val category: String?,
+    @SerializedName("difficulty") val difficulty: String?,
+    @SerializedName("moduleId") val moduleId: String,
+    @SerializedName("status") val status: String
+)
+
+// ==================== TRACE AND FOLLOW MODELS ====================
+data class TraceAndFollowResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("traceType") val traceType: String, // straight-line, curved, circle, letter
+    @SerializedName("traceImageUrl") val traceImageUrl: String,
+    @SerializedName("audioText") val audioText: String?,
+    @SerializedName("audioUrl") val audioUrl: String?,
+    @SerializedName("category") val category: String?,
+    @SerializedName("difficulty") val difficulty: String?,
+    @SerializedName("moduleId") val moduleId: String,
+    @SerializedName("status") val status: String
 )
 
 // ==================== PROGRESS MODELS ====================

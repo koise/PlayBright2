@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M24,24 m-20,0 a20,20 0,1 1,40 0a20,20 0,1 1,-40 0" />
+    <!-- Picture Frame -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,12 L28,12 L28,28 L12,28 Z" />
+    <path
+        android:fillColor="#4A90E2"
+        android:pathData="M14,14 L26,14 L26,26 L14,26 Z" />
+    <!-- Sound Wave -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M32,20 Q36,18 40,20" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M32,24 Q36,22 40,24" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M32,28 Q36,26 40,28" />
+</vector>
+

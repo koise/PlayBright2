@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M24,24 m-20,0 a20,20 0,1 1,40 0a20,20 0,1 1,-40 0" />
+    <!-- Card 1 (Left) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,16 L18,16 L18,24 L8,24 Z" />
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M10,18 L16,18 L16,22 L10,22 Z" />
+    <!-- Card 2 (Right) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,16 L40,16 L40,24 L30,24 Z" />
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M32,18 L38,18 L38,22 L32,22 Z" />
+    <!-- Matching Arrow -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M20,20 L28,20" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M26,18 L28,20 L26,22" />
+</vector>
+

@@ -87,50 +87,56 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.core.widget.NestedScrollView
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <LinearLayout
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:layout_height="match_parent">
 
-            <!-- Learning Modules Section -->
-            <TextView
-                android:id="@+id/tvSectionTitle"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Learning Modules"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:textColor="@color/primary_blue"
-                android:layout_marginBottom="16dp" />
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <!-- Grid Layout for Modules -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvModules"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"
-                tools:listitem="@layout/item_module_card" />
+                <!-- Learning Modules Section -->
+                <TextView
+                    android:id="@+id/tvSectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Learning Modules"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/primary_blue"
+                    android:layout_marginBottom="16dp" />
 
-            <TextView
-                android:id="@+id/tvEmptyState"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="No learning modules available yet.\nCheck back soon!"
-                android:textSize="16sp"
-                android:textColor="@color/text_secondary"
-                android:gravity="center"
-                android:padding="48dp"
-                android:visibility="gone"
-                tools:visibility="visible" />
+                <!-- Grid Layout for Modules -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvModules"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    tools:listitem="@layout/item_module_card" />
 
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+                <TextView
+                    android:id="@+id/tvEmptyState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No learning modules available yet.\nCheck back soon!"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:padding="48dp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <ProgressBar
         android:id="@+id/progressBar"

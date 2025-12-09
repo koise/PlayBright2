@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_light"
+    android:fitsSystemWindows="true">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:elevation="0dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/white"
+            app:title="Tap &amp; Repeat"
+            app:titleTextColor="@color/text_primary"
+            app:navigationIcon="@android:drawable/ic_menu_revert"
+            app:navigationIconTint="@color/text_primary" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="16dp"
+            android:background="@color/white"
+            android:gravity="center_vertical">
+
+            <!-- Progress -->
+            <TextView
+                android:id="@+id/tvProgress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Word 1/10"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary" />
+
+            <!-- Completed Count -->
+            <TextView
+                android:id="@+id/tvCompleted"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Completed: 0"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary" />
+
+        </LinearLayout>
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp">
+
+            <!-- Word Image (Optional) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardImage"
+                android:layout_width="280dp"
+                android:layout_height="280dp"
+                android:layout_marginBottom="32dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/white"
+                app:strokeWidth="0dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/ivWordImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Word Image"
+                    android:background="@color/bg_light" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Word Text -->
+            <TextView
+                android:id="@+id/tvWord"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Word"
+                android:textSize="48sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:layout_marginBottom="32dp" />
+
+            <!-- Instruction Text -->
+            <TextView
+                android:id="@+id/tvInstruction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tap the word to hear it, then repeat it!"
+                android:textSize="18sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:layout_marginBottom="32dp" />
+
+            <!-- Listen Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnListen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔊 Listen"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="48dp"
+                android:paddingVertical="16dp"
+                android:layout_marginBottom="24dp"
+                app:cornerRadius="16dp"
+                app:backgroundTint="@color/primary_blue"
+                android:textColor="@color/white"
+                android:stateListAnimator="@null" />
+
+            <!-- Record Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRecord"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎤 Tap to Speak"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="48dp"
+                android:paddingVertical="16dp"
+                android:enabled="false"
+                app:cornerRadius="16dp"
+                app:backgroundTint="@color/success_green"
+                android:textColor="@color/white"
+                android:stateListAnimator="@null" />
+
+            <!-- Listening Indicator -->
+            <LinearLayout
+                android:id="@+id/llListeningIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="24dp"
+                android:visibility="gone">
+
+                <View
+                    android:id="@+id/viewListeningDot1"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:background="@drawable/bg_listening_dot"
+                    android:layout_marginEnd="8dp" />
+
+                <View
+                    android:id="@+id/viewListeningDot2"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:background="@drawable/bg_listening_dot"
+                    android:layout_marginEnd="8dp" />
+
+                <View
+                    android:id="@+id/viewListeningDot3"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:background="@drawable/bg_listening_dot" />
+
+            </LinearLayout>
+
+            <!-- Speech Result -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardSpeechResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp"
+                app:cardBackgroundColor="@color/white"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tvSpeechResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="You said: word"
+                    android:textSize="18sp"
+                    android:textColor="@color/text_primary"
+                    android:gravity="center"
+                    android:padding="16dp" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+        <!-- Completion Screen -->
+        <LinearLayout
+            android:id="@+id/layoutCompletion"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/ivTrophy"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@drawable/ic_trophy"
+                android:contentDescription="Trophy"
+                android:tint="@color/gold"
+                android:layout_marginBottom="24dp" />
+
+            <TextView
+                android:id="@+id/tvCompletionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Great Job!"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:id="@+id/tvCompletionStats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="You practiced 0 words!"
+                android:textSize="18sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:layout_marginBottom="32dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPracticeAgain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Practice Again"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="32dp"
+                android:paddingVertical="12dp"
+                app:cornerRadius="12dp"
+                app:backgroundTint="@color/primary_blue"
+                android:textColor="@color/white"
+                android:layout_marginBottom="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFinish"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Finish"
+                android:textSize="16sp"
+                android:paddingHorizontal="32dp"
+                android:paddingVertical="12dp"
+                app:cornerRadius="12dp"
+                app:backgroundTint="@color/text_secondary"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#4ECDC4"
+        android:pathData="M24,24 m-20,0 a20,20 0,1 1,40 0a20,20 0,1 1,-40 0" />
+    <!-- Category Box 1 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10,12 L20,12 L20,20 L10,20 Z" />
+    <!-- Category Box 2 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,12 L38,12 L38,20 L28,20 Z" />
+    <!-- Category Box 3 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10,28 L20,28 L20,36 L10,36 Z" />
+    <!-- Category Box 4 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,28 L38,28 L38,36 L28,36 Z" />
+    <!-- Checkmark on Box 1 -->
+    <path
+        android:strokeColor="#4ECDC4"
+        android:strokeWidth="2"
+        android:pathData="M13,18 L16,21 L19,16" />
+</vector>
+

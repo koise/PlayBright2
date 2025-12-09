@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M24,4C13.5,4 5,12.5 5,23s8.5,19 19,19 19,-8.5 19,-19S34.5,4 24,4z" />
+    <!-- Pencil/Pen -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,12 L22,16 L20,18 L16,14 Z" />
+    <!-- Pencil tip -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M16,14 L14,16 L18,20 L20,18 Z" />
+    <!-- Tracing line (curved path as filled shape) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,20 Q24,16 28,20 L28,22 Q24,18 20,22 Z" />
+    <!-- Template guide line (lighter) -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M20,24 Q24,20 28,24 L28,25 Q24,21 20,25 Z" />
+</vector>
+

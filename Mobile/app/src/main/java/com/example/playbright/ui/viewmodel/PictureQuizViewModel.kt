@@ -48,12 +48,6 @@ class PictureQuizViewModel : ViewModel() {
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
-    private val _starsEarned = MutableLiveData<Int>(0)
-    val starsEarned: LiveData<Int> = _starsEarned
-
-    private val _questionStars = MutableLiveData<Map<Int, Boolean>>(emptyMap())
-    val questionStars: LiveData<Map<Int, Boolean>> = _questionStars
-
     private val _correctAnswers = MutableLiveData<Int>(0)
     val correctAnswers: LiveData<Int> = _correctAnswers
 
@@ -67,7 +61,6 @@ class PictureQuizViewModel : ViewModel() {
     val originalTotalQuestions: LiveData<Int> = _originalTotalQuestions
 
     private var selectedAnswerIndex: Int? = null
-    private val questionStarsMap = mutableMapOf<Int, Boolean>()
     private val answerResults = mutableMapOf<String, Boolean>() // questionId -> isCorrect
 
     fun loadQuestions() {
@@ -76,13 +69,17 @@ class PictureQuizViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                android.util.Log.d("PictureQuizViewModel", "Loading questions for module: $MODULE_ID")
                 val response = repository.getQuestions(
                     moduleId = MODULE_ID,
                     status = "Active"
                 )
 
+                android.util.Log.d("PictureQuizViewModel", "Response status: ${response.isSuccessful}, Code: ${response.code()}")
+                
                 if (response.isSuccessful) {
                     val questionsList = response.body() ?: emptyList()
+                    android.util.Log.d("PictureQuizViewModel", "Loaded ${questionsList.size} questions from backend")
                     
                     // Shuffle questions for random order
                     val shuffledQuestions = questionsList.shuffled()
@@ -95,15 +92,19 @@ class PictureQuizViewModel : ViewModel() {
                         _effectiveTotalQuestions.value = shuffledQuestions.size // Initialize effective total
                         updateProgress()
                         loadProgress() // Load existing progress
+                        android.util.Log.d("PictureQuizViewModel", "✅ Questions loaded successfully")
                     } else {
                         // No questions found - show error or empty state
+                        android.util.Log.w("PictureQuizViewModel", "⚠️ No questions found for module: $MODULE_ID")
                         _error.value = "No questions available for this module. Please add questions in the admin panel."
                     }
                 } else {
                     val errorBody = response.errorBody()?.string() ?: response.message()
+                    android.util.Log.e("PictureQuizViewModel", "❌ Failed to load questions: ${response.code()} - $errorBody")
                     _error.value = "Failed to load questions: $errorBody"
                 }
             } catch (e: Exception) {
+                android.util.Log.e("PictureQuizViewModel", "❌ Exception loading questions: ${e.message}", e)
                 val errorMessage = ApiErrorHandler.handleError(e)
                 _error.value = errorMessage
             } finally {
@@ -123,18 +124,7 @@ class PictureQuizViewModel : ViewModel() {
                     val progressData = response.body()?.data
                     progressData?.let {
                         _score.value = it.score
-                        _starsEarned.value = it.starsEarned
                         _currentQuestionIndex.value = it.currentQuestion
-
-                        // Restore question stars
-                        val starsMap = mutableMapOf<Int, Boolean>()
-                        it.questionsAnswered?.forEachIndexed { index, answer ->
-                            if (answer.isCorrect) {
-                                starsMap[index] = true
-                            }
-                        }
-                        questionStarsMap.putAll(starsMap)
-                        _questionStars.value = questionStarsMap.toMap()
 
                         // Update current question and restore totals
                         val questionsList = _questions.value ?: emptyList()
@@ -192,14 +182,6 @@ class PictureQuizViewModel : ViewModel() {
             val newScore = (_score.value ?: 0) + 1
             _score.value = newScore
             _correctAnswers.value = (_correctAnswers.value ?: 0) + 1
-            
-            // Award star for this question (only once per question)
-            val currentIndex = _currentQuestionIndex.value ?: 0
-            if (!questionStarsMap.containsKey(currentIndex) || questionStarsMap[currentIndex] != true) {
-                questionStarsMap[currentIndex] = true
-                _questionStars.value = questionStarsMap.toMap()
-                _starsEarned.value = (_starsEarned.value ?: 0) + 1
-            }
         } else {
             _wrongAnswers.value = (_wrongAnswers.value ?: 0) + 1
             // Reduce effective total questions when wrong answer is given
@@ -237,7 +219,7 @@ class PictureQuizViewModel : ViewModel() {
                     wrongAnswers = _wrongAnswers.value
                 )
 
-                repository.updateProgress(request)
+                repository.updateProgress(studentId, MODULE_ID, request)
             } catch (e: Exception) {
                 // Silently fail - progress will be synced later
             }
@@ -284,7 +266,7 @@ class PictureQuizViewModel : ViewModel() {
                 )
 
                 android.util.Log.d("PictureQuiz", "Saving final statistics: score=$finalScore, correct=$finalCorrect, wrong=$finalWrong, total=${questionsList.size}")
-                repository.updateProgress(request)
+                repository.updateProgress(studentId, MODULE_ID, request)
                 android.util.Log.d("PictureQuiz", "Final statistics saved successfully")
             } catch (e: Exception) {
                 android.util.Log.e("PictureQuiz", "Error marking module as completed: ${e.message}", e)
@@ -318,11 +300,8 @@ class PictureQuizViewModel : ViewModel() {
         _score.value = 0
         _progress.value = 0
         _isCompleted.value = false
-        _starsEarned.value = 0
         _correctAnswers.value = 0
         _wrongAnswers.value = 0
-        questionStarsMap.clear()
-        _questionStars.value = emptyMap()
         answerResults.clear()
         selectedAnswerIndex = null
 
@@ -354,8 +333,7 @@ class PictureQuizViewModel : ViewModel() {
             "total" to originalTotal, // Original total questions
             "totalAttempted" to totalAttempted, // Total questions attempted
             "percentage" to percentage,
-            "score" to (_score.value ?: 0),
-            "starsEarned" to (_starsEarned.value ?: 0)
+            "score" to (_score.value ?: 0)
         )
     }
 }

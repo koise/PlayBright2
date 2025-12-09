@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".PlayBrightApplication"
@@ -66,7 +67,59 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".ui.activity.PictureLabelingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.activity.CategorySelectionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.activity.EmotionRecognitionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.activity.YesNoQuestionsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.activity.TapRepeatActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.activity.MatchingPairsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.activity.WordBuilderActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".ui.activity.TraceAndFollowActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".ui.activity.ProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlayBright.NoActionBar" />
+
+        <activity
+            android:name=".ui.activity.SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.PlayBright.NoActionBar" />
 

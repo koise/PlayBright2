@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M24,24 m-20,0 a20,20 0,1 1,40 0a20,20 0,1 1,-40 0" />
+    <!-- Numbered Cards in Sequence -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,20 L16,20 L16,28 L8,28 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,20 L26,20 L26,28 L18,28 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,20 L36,20 L36,28 L28,28 Z" />
+    <!-- Numbers on Cards -->
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M10,24 L12,24 L12,26 L10,26 Z" />
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M20,24 L22,24 L22,26 L20,26 Z" />
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M30,24 L32,24 L32,26 L30,26 Z" />
+    <!-- Arrow connecting cards -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M16,24 L18,24" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M26,24 L28,24" />
+</vector>
+

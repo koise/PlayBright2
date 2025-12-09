@@ -312,6 +312,35 @@ class ApiRepository {
         return apiService.getMatchingPairById(id)
     }
     
+    // ==================== WORD BUILDER ====================
+    suspend fun getWordBuilders(
+        moduleId: String? = null,
+        status: String? = null,
+        category: String? = null,
+        difficulty: String? = null
+    ): Response<List<WordBuilderResponse>> {
+        return apiService.getWordBuilders(moduleId, status, category, difficulty)
+    }
+    
+    suspend fun getWordBuilderById(id: String): Response<WordBuilderResponse> {
+        return apiService.getWordBuilderById(id)
+    }
+    
+    // ==================== TRACE AND FOLLOW ====================
+    suspend fun getTraceAndFollows(
+        moduleId: String? = null,
+        status: String? = null,
+        category: String? = null,
+        difficulty: String? = null,
+        traceType: String? = null
+    ): Response<List<TraceAndFollowResponse>> {
+        return apiService.getTraceAndFollows(moduleId, status, category, difficulty, traceType)
+    }
+    
+    suspend fun getTraceAndFollowById(id: String): Response<TraceAndFollowResponse> {
+        return apiService.getTraceAndFollowById(id)
+    }
+    
     suspend fun createMatchingPair(pair: CreateMatchingPairRequest): Response<MatchingPairResponse> {
         return apiService.createMatchingPair(pair)
     }
@@ -324,15 +353,19 @@ class ApiRepository {
     }
     
     // ==================== PROGRESS ====================
-    suspend fun updateProgress(request: UpdateProgressRequest): Response<ProgressResponse> {
-        return apiService.updateProgress(request)
+    // ==================== PROGRESS (Simplified path-based endpoints) ====================
+    suspend fun updateProgress(studentId: String, moduleId: String, request: UpdateProgressRequest): Response<ProgressResponse> {
+        // Use simplified path-based endpoint: POST /api/progress/{studentId}/{moduleId}
+        return apiService.updateProgress(studentId, moduleId, request)
     }
 
     suspend fun getProgress(studentId: String, moduleId: String): Response<ProgressResponse> {
+        // Use simplified path-based endpoint: GET /api/progress/{studentId}/{moduleId}
         return apiService.getProgress(studentId, moduleId)
     }
 
     suspend fun getAllProgress(studentId: String): Response<ApiResponse> {
+        // Use simplified path-based endpoint: GET /api/progress/{studentId}
         return apiService.getAllProgress(studentId)
     }
 

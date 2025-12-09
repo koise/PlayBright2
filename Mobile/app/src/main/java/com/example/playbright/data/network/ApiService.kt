@@ -283,18 +283,61 @@ interface ApiService {
         @Body pair: UpdateMatchingPairRequest
     ): Response<MatchingPairResponse>
     
+    // ==================== WORD BUILDER ====================
+    @GET("api/word-builders")
+    suspend fun getWordBuilders(
+        @Query("moduleId") moduleId: String? = null,
+        @Query("status") status: String? = null,
+        @Query("category") category: String? = null,
+        @Query("difficulty") difficulty: String? = null
+    ): Response<List<WordBuilderResponse>>
+    
+    @GET("api/word-builders/{id}")
+    suspend fun getWordBuilderById(@Path("id") id: String): Response<WordBuilderResponse>
+    
+    // ==================== TRACE AND FOLLOW ====================
+    @GET("api/trace-and-follows")
+    suspend fun getTraceAndFollows(
+        @Query("moduleId") moduleId: String? = null,
+        @Query("status") status: String? = null,
+        @Query("category") category: String? = null,
+        @Query("difficulty") difficulty: String? = null,
+        @Query("traceType") traceType: String? = null
+    ): Response<List<TraceAndFollowResponse>>
+    
+    @GET("api/trace-and-follows/{id}")
+    suspend fun getTraceAndFollowById(@Path("id") id: String): Response<TraceAndFollowResponse>
+    
     // ==================== PROGRESS ====================
+    // Simplified path-based routes (easier to use with student ID in URL)
+    @POST("api/progress/{studentId}/{moduleId}")
+    suspend fun updateProgress(
+        @Path("studentId") studentId: String,
+        @Path("moduleId") moduleId: String,
+        @Body request: UpdateProgressRequest
+    ): Response<ProgressResponse>
+
+    @GET("api/progress/{studentId}/{moduleId}")
+    suspend fun getProgress(
+        @Path("studentId") studentId: String,
+        @Path("moduleId") moduleId: String
+    ): Response<ProgressResponse>
+
+    @GET("api/progress/{studentId}")
+    suspend fun getAllProgress(@Path("studentId") studentId: String): Response<ApiResponse>
+    
+    // Original routes (kept for backward compatibility if needed)
     @POST("api/progress/update")
-    suspend fun updateProgress(@Body request: UpdateProgressRequest): Response<ProgressResponse>
+    suspend fun updateProgressLegacy(@Body request: UpdateProgressRequest): Response<ProgressResponse>
 
     @GET("api/progress/get")
-    suspend fun getProgress(
+    suspend fun getProgressLegacy(
         @Query("studentId") studentId: String,
         @Query("moduleId") moduleId: String
     ): Response<ProgressResponse>
 
     @GET("api/progress/all")
-    suspend fun getAllProgress(@Query("studentId") studentId: String): Response<ApiResponse>
+    suspend fun getAllProgressLegacy(@Query("studentId") studentId: String): Response<ApiResponse>
 
     // ==================== ACTIVITY LOGS ====================
     @GET("api/activity-logs")

@@ -15,12 +15,14 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.playbright.R
 import com.example.playbright.databinding.ActivityAudioIdentificationBinding
 import com.example.playbright.ui.viewmodel.AudioIdentificationViewModel
+import com.example.playbright.utils.SoundManager
 import java.util.Locale
 
 class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     
     private lateinit var binding: ActivityAudioIdentificationBinding
     private val viewModel: AudioIdentificationViewModel by viewModels()
+    private lateinit var soundManager: SoundManager
     private var textToSpeech: TextToSpeech? = null
     private var hasAnsweredCorrectly = false
     private var isTtsReady = false
@@ -33,6 +35,9 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
         try {
             binding = ActivityAudioIdentificationBinding.inflate(layoutInflater)
             setContentView(binding.root)
+            
+            // Initialize SoundManager
+            soundManager = SoundManager.getInstance(this)
             
             // Initialize TextToSpeech
             textToSpeech = TextToSpeech(this, this)
@@ -47,6 +52,9 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
             // Show quiz layout immediately
             binding.layoutQuiz.visibility = View.VISIBLE
             binding.layoutCompletion.visibility = View.GONE
+            
+            // Start background music
+            soundManager.startBackgroundMusic()
             
             // Load questions and start the game immediately
             viewModel.loadQuestions()
@@ -138,7 +146,7 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
         }
         
         viewModel.score.observe(this) { score ->
-            binding.tvScore.text = "$score"
+            binding.tvScore.text = "Score: $score"
         }
         
         viewModel.progress.observe(this) { progress ->
@@ -152,10 +160,6 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
         
         viewModel.originalTotalQuestions.observe(this) {
             updateQuestionCounter()
-        }
-        
-        viewModel.questionStars.observe(this) { starsMap ->
-            updateStarsDisplay(starsMap)
         }
         
         viewModel.isLoading.observe(this) { isLoading ->
@@ -216,6 +220,21 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
     
     private fun playAudio() {
         val question = viewModel.currentQuestion.value ?: return
+        
+        // Animate button on click
+        binding.btnPlayAudio.animate()
+            .scaleX(1.2f)
+            .scaleY(1.2f)
+            .setDuration(100)
+            .withEndAction {
+                binding.btnPlayAudio.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(100)
+                    .start()
+            }
+            .start()
+        
         speakImageText(question)
     }
     
@@ -233,8 +252,24 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
     }
     
     private fun updateQuestionUI(question: com.example.playbright.data.model.AudioIdentificationResponse) {
-        // Show the question text with kid-friendly emoji
+        // Animate question text entrance
+        binding.tvQuestion.alpha = 0f
         binding.tvQuestion.text = "🎵 ${question.question}"
+        binding.tvQuestion.animate()
+            .alpha(1f)
+            .setDuration(400)
+            .start()
+        
+        // Animate play button with bounce
+        binding.btnPlayAudio.scaleX = 0f
+        binding.btnPlayAudio.scaleY = 0f
+        binding.btnPlayAudio.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(500)
+            .setInterpolator(android.view.animation.BounceInterpolator())
+            .setStartDelay(200)
+            .start()
         
         // Load 4 images
         val imageViews = listOf(
@@ -251,8 +286,9 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
             binding.cardImage4
         )
         
-        // Reset all image cards and badges
+        // Reset all image cards and badges with fade out
         imageCards.forEach { card ->
+            card.alpha = 0f
             card.strokeWidth = 0
             card.setStrokeColor(ContextCompat.getColor(this, android.R.color.transparent))
         }
@@ -281,16 +317,23 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
         // Shuffle images for random display
         shuffledIndices = (0 until imagesToLoad.size).shuffled()
         
-        // Load images in shuffled order
+        // Load images in shuffled order with staggered animations
         shuffledIndices.forEachIndexed { displayIndex, originalIndex ->
             if (displayIndex < imageViews.size && originalIndex < imagesToLoad.size) {
                 val image = imagesToLoad[originalIndex]
+                val card = imageCards[displayIndex]
                 
                 // Make image clickable
-                imageCards[displayIndex].isClickable = true
-                imageCards[displayIndex].isFocusable = true
-                imageCards[displayIndex].setOnClickListener {
-                    handleImageSelection(displayIndex, originalIndex, imagesToLoad)
+                card.isClickable = true
+                card.isFocusable = true
+                card.setOnClickListener {
+                    // Add pulse animation on click
+                    val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.pulse)
+                    card.startAnimation(pulseAnim)
+                    
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        handleImageSelection(displayIndex, originalIndex, imagesToLoad)
+                    }, 100)
                 }
                 
                 // Load image
@@ -305,12 +348,21 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
                 } else {
                     imageViews[displayIndex].setImageResource(R.drawable.ic_placeholder_image)
                 }
+                
+                // Animate card entrance with staggered delay
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val popInAnim = AnimationUtils.loadAnimation(this, R.anim.pop_in)
+                    card.startAnimation(popInAnim)
+                    card.animate()
+                        .alpha(1f)
+                        .setDuration(400)
+                        .start()
+                }, (displayIndex * 100L))
             }
         }
         
         // Hide next button initially
         binding.btnNext.visibility = View.GONE
-        binding.ivStar.visibility = View.GONE
         
         // Enable play button
         binding.btnPlayAudio.isEnabled = true
@@ -342,9 +394,13 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
         val isCorrect = imagesToLoad[originalIndex].isCorrect
         
         if (isCorrect) {
-            // Correct answer - highlight in green
+            // Correct answer - highlight in green with animation
             imageCards[displayIndex].strokeWidth = 8
             imageCards[displayIndex].setStrokeColor(ContextCompat.getColor(this, R.color.correct_answer))
+            
+            // Success pop animation
+            val successAnim = AnimationUtils.loadAnimation(this, R.anim.success_pop)
+            imageCards[displayIndex].startAnimation(successAnim)
             
             // Award star and show animation
             if (!hasAnsweredCorrectly) {
@@ -353,94 +409,93 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
                 playSuccessSound()
                 showSuccessAnimation()
                 
-                // Show next button after delay (make it more visible with animation)
+                // Fade other cards
+                imageCards.forEachIndexed { idx, card ->
+                    if (idx != displayIndex) {
+                        card.animate()
+                            .alpha(0.5f)
+                            .setDuration(300)
+                            .start()
+                    }
+                }
+                
+                // Show next button with slide up animation
                 Handler(Looper.getMainLooper()).postDelayed({
                     binding.btnNext.visibility = View.VISIBLE
-                    binding.btnNext.alpha = 0f
-                    binding.btnNext.animate()
-                        .alpha(1f)
-                        .setDuration(300)
-                        .start()
-                    isProcessingAnswer = false // Re-enable after showing next button
-                }, 1000) // Reduced delay for better UX
+                    val slideUpAnim = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in)
+                    binding.btnNext.startAnimation(slideUpAnim)
+                    isProcessingAnswer = false
+                }, 1200)
             } else {
                 isProcessingAnswer = false
             }
         } else {
-            // Wrong answer - highlight in red
+            // Wrong answer - shake and highlight in red
+            val shakeAnim = AnimationUtils.loadAnimation(this, R.anim.shake)
+            imageCards[displayIndex].startAnimation(shakeAnim)
+            
             imageCards[displayIndex].strokeWidth = 8
             imageCards[displayIndex].setStrokeColor(ContextCompat.getColor(this, R.color.wrong_answer))
             
             // Record wrong answer in statistics
             if (!hasAnsweredCorrectly) {
-                viewModel.checkAnswer(originalIndex) // This will increment wrong answer count
+                viewModel.checkAnswer(originalIndex)
             }
             
             playErrorSound()
             
-            // Show correct answer in green (find the display index of the correct answer)
-            shuffledIndices.forEachIndexed { dispIdx, origIdx ->
-                if (origIdx < imagesToLoad.size && imagesToLoad[origIdx].isCorrect && dispIdx < imageCards.size) {
-                    imageCards[dispIdx].strokeWidth = 8
-                    imageCards[dispIdx].setStrokeColor(ContextCompat.getColor(this, R.color.correct_answer))
+            // Show correct answer with bounce after delay
+            Handler(Looper.getMainLooper()).postDelayed({
+                shuffledIndices.forEachIndexed { dispIdx, origIdx ->
+                    if (origIdx < imagesToLoad.size && imagesToLoad[origIdx].isCorrect && dispIdx < imageCards.size) {
+                        imageCards[dispIdx].strokeWidth = 8
+                        imageCards[dispIdx].setStrokeColor(ContextCompat.getColor(this, R.color.correct_answer))
+                        
+                        val bounceAnim = AnimationUtils.loadAnimation(this, R.anim.bounce)
+                        imageCards[dispIdx].startAnimation(bounceAnim)
+                    }
                 }
-            }
+            }, 300)
             
-            // Proceed to next question after delay (wrong answer)
+            // Proceed to next question
             Handler(Looper.getMainLooper()).postDelayed({
                 viewModel.nextQuestion()
                 binding.btnNext.visibility = View.GONE
-                hasAnsweredCorrectly = false // Reset for next question
-                isProcessingAnswer = false // Re-enable after moving to next question
-            }, 2000)
+                hasAnsweredCorrectly = false
+                isProcessingAnswer = false
+            }, 2500)
         }
     }
     
     private fun playSuccessSound() {
-        // Sound feedback can be added later
+        soundManager.playSuccessSound()
     }
     
     private fun playErrorSound() {
-        // Sound feedback can be added later
+        soundManager.playErrorSound()
     }
     
     private fun showSuccessAnimation() {
-        val animation = AnimationUtils.loadAnimation(this, R.anim.bounce)
-        binding.ivStar.visibility = View.VISIBLE
-        binding.ivStar.startAnimation(animation)
-        
-        Handler(Looper.getMainLooper()).postDelayed({
-            binding.ivStar.visibility = View.GONE
-        }, 2000)
-    }
-    
-    private fun updateStarsDisplay(starsMap: Map<Int, Boolean>) {
-        binding.llStarsContainer.removeAllViews()
-        
-        val totalQuestions = viewModel.questions.value?.size ?: 0
-        for (i in 0 until totalQuestions) {
-            val starImageView = android.widget.ImageView(this)
-            val size = resources.getDimensionPixelSize(android.R.dimen.app_icon_size) / 2
-            starImageView.layoutParams = android.widget.LinearLayout.LayoutParams(size, size).apply {
-                setMargins(0, 0, resources.getDimensionPixelSize(android.R.dimen.app_icon_size) / 4, 0)
-            }
-            
-            if (starsMap[i] == true) {
-                starImageView.setImageResource(R.drawable.ic_star)
-                starImageView.setColorFilter(getColor(R.color.gold))
-            } else {
-                starImageView.setImageResource(R.drawable.ic_star)
-                starImageView.setColorFilter(getColor(R.color.surface_variant))
-                starImageView.alpha = 0.3f
-            }
-            
-            binding.llStarsContainer.addView(starImageView)
-        }
+        // Success animation (star system removed)
     }
     
     private fun showCompletionScreen() {
-        binding.layoutQuiz.visibility = View.GONE
-        binding.layoutCompletion.visibility = View.VISIBLE
+        // Fade out quiz layout
+        binding.layoutQuiz.animate()
+            .alpha(0f)
+            .setDuration(300)
+            .withEndAction {
+                binding.layoutQuiz.visibility = View.GONE
+                binding.layoutQuiz.alpha = 1f
+                
+                binding.layoutCompletion.alpha = 0f
+                binding.layoutCompletion.visibility = View.VISIBLE
+                binding.layoutCompletion.animate()
+                    .alpha(1f)
+                    .setDuration(400)
+                    .start()
+            }
+            .start()
         
         val statistics = viewModel.getStatistics()
         val correct = statistics["correct"] as Int
@@ -448,29 +503,89 @@ class AudioIdentificationActivity : AppCompatActivity(), TextToSpeech.OnInitList
         val totalAttempted = statistics["totalAttempted"] as Int
         val percentage = statistics["percentage"] as Int
         val score = statistics["score"] as Int
-        val starsEarned = statistics["starsEarned"] as Int
         
-        binding.tvFinalScore.text = "Quiz Complete!"
+        // Animate text
+        binding.tvFinalScore.alpha = 0f
+        binding.tvFinalScore.text = "🎵 Great Listening! 🎵"
+        binding.tvFinalScore.animate()
+            .alpha(1f)
+            .setDuration(500)
+            .setStartDelay(300)
+            .start()
+        
+        binding.tvScoreText.alpha = 0f
         binding.tvScoreText.text = "You scored $score out of $totalAttempted!"
+        binding.tvScoreText.animate()
+            .alpha(1f)
+            .setDuration(500)
+            .setStartDelay(600)
+            .start()
         
-        // Update statistics display
         binding.tvCorrectCount.text = "$correct"
         binding.tvWrongCount.text = "$wrong"
         binding.tvAccuracy.text = "$percentage%"
         
-        // Ensure final statistics are saved to Firebase
-        // markModuleAsCompleted() is already called in nextQuestion(), but we ensure it's saved here too
         viewModel.markModuleAsCompleted()
         
-        // Show celebration animation
-        val animation = AnimationUtils.loadAnimation(this, R.anim.celebration)
-        binding.ivTrophy.startAnimation(animation)
+        // Trophy animation
+        binding.ivTrophy.alpha = 0f
+        binding.ivTrophy.scaleX = 0f
+        binding.ivTrophy.scaleY = 0f
+        
+        Handler(Looper.getMainLooper()).postDelayed({
+            binding.ivTrophy.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(600)
+                .setInterpolator(android.view.animation.BounceInterpolator())
+                .start()
+            
+            val celebrationAnim = AnimationUtils.loadAnimation(this, R.anim.sparkle_rotate)
+            binding.ivTrophy.startAnimation(celebrationAnim)
+        }, 400)
+        
+        // Animate buttons
+        binding.btnPlayAgain.alpha = 0f
+        binding.btnPlayAgain.translationY = 50f
+        binding.btnPlayAgain.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(400)
+            .setStartDelay(1000)
+            .start()
+        
+        binding.btnHome.alpha = 0f
+        binding.btnHome.translationY = 50f
+        binding.btnHome.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(400)
+            .setStartDelay(1100)
+            .start()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        if (::soundManager.isInitialized) {
+            soundManager.pauseBackgroundMusic()
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        if (::soundManager.isInitialized) {
+            soundManager.resumeBackgroundMusic()
+        }
     }
     
     override fun onDestroy() {
         super.onDestroy()
         textToSpeech?.stop()
         textToSpeech?.shutdown()
+        if (::soundManager.isInitialized) {
+            soundManager.stopBackgroundMusic()
+        }
     }
 }
 

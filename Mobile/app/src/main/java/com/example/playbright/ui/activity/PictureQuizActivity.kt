@@ -17,13 +17,14 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.playbright.R
 import com.example.playbright.databinding.ActivityPictureQuizBinding
 import com.example.playbright.ui.viewmodel.PictureQuizViewModel
+import com.example.playbright.utils.SoundManager
 import com.google.android.material.button.MaterialButton
 
 class PictureQuizActivity : AppCompatActivity() {
     
     private lateinit var binding: ActivityPictureQuizBinding
     private val viewModel: PictureQuizViewModel by viewModels()
-    private var mediaPlayer: MediaPlayer? = null
+    private lateinit var soundManager: SoundManager
     private var hasAnsweredCorrectly = false
     private var isProcessingAnswer = false // Prevent double-tap
     private var shuffledIndices = listOf<Int>() // Track shuffled image positions
@@ -38,12 +39,18 @@ class PictureQuizActivity : AppCompatActivity() {
             val moduleIdFromIntent = intent.getStringExtra("MODULE_ID") ?: "picture-quiz"
             viewModel.setModuleId(moduleIdFromIntent)
             
+            // Initialize SoundManager
+            soundManager = SoundManager.getInstance(this)
+            
             setupObservers()
             setupClickListeners()
             
             // Show quiz layout immediately (will be hidden if loading fails)
             binding.layoutQuiz.visibility = View.VISIBLE
             binding.layoutCompletion.visibility = View.GONE
+            
+            // Start background music
+            soundManager.startBackgroundMusic()
             
             // Load questions and start the game immediately
             viewModel.loadQuestions()
@@ -63,7 +70,7 @@ class PictureQuizActivity : AppCompatActivity() {
         }
         
         viewModel.score.observe(this) { score ->
-            binding.tvScore.text = "$score"
+            binding.tvScore.text = "Score: $score"
         }
         
         viewModel.progress.observe(this) { progress ->
@@ -86,14 +93,6 @@ class PictureQuizActivity : AppCompatActivity() {
         
         viewModel.wrongAnswers.observe(this) {
             updateAccuracy()
-        }
-        
-        viewModel.questionStars.observe(this) { starsMap ->
-            updateStarsDisplay(starsMap)
-        }
-        
-        viewModel.starsEarned.observe(this) { stars ->
-            // Stars count is already displayed in tvScore
         }
         
         viewModel.isLoading.observe(this) { isLoading ->
@@ -176,8 +175,13 @@ class PictureQuizActivity : AppCompatActivity() {
     }
     
     private fun updateQuestionUI(question: com.example.playbright.data.model.QuestionResponse) {
-        // Show the actual question text
+        // Animate question text entrance
+        binding.tvQuestion.alpha = 0f
         binding.tvQuestion.text = question.question
+        binding.tvQuestion.animate()
+            .alpha(1f)
+            .setDuration(400)
+            .start()
         
         // Load 4 images - use new structure if available, fallback to legacy
         val imageViews = listOf(
@@ -194,8 +198,9 @@ class PictureQuizActivity : AppCompatActivity() {
             binding.cardImage4
         )
         
-        // Reset all image cards
+        // Reset all image cards with fade out animation
         imageCards.forEach { card ->
+            card.alpha = 0f
             card.strokeWidth = 0
             card.setStrokeColor(ContextCompat.getColor(this, android.R.color.transparent))
         }
@@ -221,16 +226,24 @@ class PictureQuizActivity : AppCompatActivity() {
         // Shuffle images for random display
         shuffledIndices = (0 until imagesToLoad.size).shuffled()
         
-        // Load images in shuffled order
+        // Load images in shuffled order with staggered animations
         shuffledIndices.forEachIndexed { displayIndex, originalIndex ->
             if (displayIndex < imageViews.size && originalIndex < imagesToLoad.size) {
                 val image = imagesToLoad[originalIndex]
+                val card = imageCards[displayIndex]
                 
                 // Make image clickable
-                imageCards[displayIndex].isClickable = true
-                imageCards[displayIndex].isFocusable = true
-                imageCards[displayIndex].setOnClickListener {
-                    handleImageSelection(displayIndex, originalIndex, imagesToLoad)
+                card.isClickable = true
+                card.isFocusable = true
+                card.setOnClickListener {
+                    // Add pulse animation on click
+                    val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.pulse)
+                    card.startAnimation(pulseAnim)
+                    
+                    // Small delay for visual feedback
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        handleImageSelection(displayIndex, originalIndex, imagesToLoad)
+                    }, 100)
                 }
                 
                 // Load image
@@ -245,6 +258,16 @@ class PictureQuizActivity : AppCompatActivity() {
                 } else {
                     imageViews[displayIndex].setImageResource(R.drawable.ic_placeholder_image)
                 }
+                
+                // Animate card entrance with staggered delay
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val popInAnim = AnimationUtils.loadAnimation(this, R.anim.pop_in)
+                    card.startAnimation(popInAnim)
+                    card.animate()
+                        .alpha(1f)
+                        .setDuration(400)
+                        .start()
+                }, (displayIndex * 100L)) // Stagger by 100ms each
             }
         }
         
@@ -252,7 +275,6 @@ class PictureQuizActivity : AppCompatActivity() {
         
         // Hide next button initially
         binding.btnNext.visibility = View.GONE
-        binding.ivStar.visibility = View.GONE
     }
     
     private fun handleImageSelection(displayIndex: Int, originalIndex: Int, imagesToLoad: List<com.example.playbright.data.model.QuestionImage>) {
@@ -278,9 +300,13 @@ class PictureQuizActivity : AppCompatActivity() {
         val isCorrect = imagesToLoad[originalIndex].isCorrect
         
         if (isCorrect) {
-            // Correct answer - highlight in green
+            // Correct answer - highlight in green with animation
             imageCards[displayIndex].strokeWidth = 8
             imageCards[displayIndex].setStrokeColor(ContextCompat.getColor(this, R.color.correct_answer))
+            
+            // Bouncy success animation
+            val successAnim = AnimationUtils.loadAnimation(this, R.anim.success_pop)
+            imageCards[displayIndex].startAnimation(successAnim)
             
             // Award star and show animation
             if (!hasAnsweredCorrectly) {
@@ -289,16 +315,31 @@ class PictureQuizActivity : AppCompatActivity() {
                 playSuccessSound()
                 showSuccessAnimation()
                 
-                // Show next button after delay
+                // Animate all other cards to fade slightly
+                imageCards.forEachIndexed { idx, card ->
+                    if (idx != displayIndex) {
+                        card.animate()
+                            .alpha(0.5f)
+                            .setDuration(300)
+                            .start()
+                    }
+                }
+                
+                // Show next button with slide up animation
                 Handler(Looper.getMainLooper()).postDelayed({
                     binding.btnNext.visibility = View.VISIBLE
+                    val slideUpAnim = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_in)
+                    binding.btnNext.startAnimation(slideUpAnim)
                     isProcessingAnswer = false // Re-enable after showing next button
-                }, 1500)
+                }, 1200)
             } else {
                 isProcessingAnswer = false
             }
         } else {
-            // Wrong answer - highlight in red
+            // Wrong answer - shake and highlight in red
+            val shakeAnim = AnimationUtils.loadAnimation(this, R.anim.shake)
+            imageCards[displayIndex].startAnimation(shakeAnim)
+            
             imageCards[displayIndex].strokeWidth = 8
             imageCards[displayIndex].setStrokeColor(ContextCompat.getColor(this, R.color.wrong_answer))
             
@@ -309,83 +350,60 @@ class PictureQuizActivity : AppCompatActivity() {
             
             playErrorSound()
             
-            // Show correct answer in green (find the display index of the correct answer)
-            shuffledIndices.forEachIndexed { dispIdx, origIdx ->
-                if (origIdx < imagesToLoad.size && imagesToLoad[origIdx].isCorrect && dispIdx < imageCards.size) {
-                    imageCards[dispIdx].strokeWidth = 8
-                    imageCards[dispIdx].setStrokeColor(ContextCompat.getColor(this, R.color.correct_answer))
+            // Show correct answer in green with pop animation (find the display index of the correct answer)
+            Handler(Looper.getMainLooper()).postDelayed({
+                shuffledIndices.forEachIndexed { dispIdx, origIdx ->
+                    if (origIdx < imagesToLoad.size && imagesToLoad[origIdx].isCorrect && dispIdx < imageCards.size) {
+                        imageCards[dispIdx].strokeWidth = 8
+                        imageCards[dispIdx].setStrokeColor(ContextCompat.getColor(this, R.color.correct_answer))
+                        
+                        // Highlight correct answer with bounce
+                        val bounceAnim = AnimationUtils.loadAnimation(this, R.anim.bounce)
+                        imageCards[dispIdx].startAnimation(bounceAnim)
+                    }
                 }
-            }
+            }, 300)
             
             // Proceed to next question after delay (wrong answer)
             Handler(Looper.getMainLooper()).postDelayed({
                 viewModel.nextQuestion()
                 binding.btnNext.visibility = View.GONE
                 isProcessingAnswer = false // Re-enable after moving to next question
-            }, 2000)
+            }, 2500)
         }
     }
     
     
     private fun playSuccessSound() {
-        try {
-            // Sound file can be added later to res/raw/success_sound.mp3
-            // mediaPlayer?.release()
-            // mediaPlayer = MediaPlayer.create(this, R.raw.success_sound)
-            // mediaPlayer?.start()
-        } catch (e: Exception) {
-            // Sound file might not exist, that's okay
-        }
+        soundManager.playSuccessSound()
     }
     
     private fun playErrorSound() {
-        try {
-            // Sound file can be added later to res/raw/error_sound.mp3
-            // mediaPlayer?.release()
-            // mediaPlayer = MediaPlayer.create(this, R.raw.error_sound)
-            // mediaPlayer?.start()
-        } catch (e: Exception) {
-            // Sound file might not exist, that's okay
-        }
+        soundManager.playErrorSound()
     }
     
     private fun showSuccessAnimation() {
-        val animation = AnimationUtils.loadAnimation(this, R.anim.bounce)
-        binding.ivStar.visibility = View.VISIBLE
-        binding.ivStar.startAnimation(animation)
-        
-        Handler(Looper.getMainLooper()).postDelayed({
-            binding.ivStar.visibility = View.GONE
-        }, 2000)
-    }
-    
-    private fun updateStarsDisplay(starsMap: Map<Int, Boolean>) {
-        binding.llStarsContainer.removeAllViews()
-        
-        val totalQuestions = viewModel.questions.value?.size ?: 0
-        for (i in 0 until totalQuestions) {
-            val starImageView = android.widget.ImageView(this)
-            val size = resources.getDimensionPixelSize(android.R.dimen.app_icon_size) / 2
-            starImageView.layoutParams = android.widget.LinearLayout.LayoutParams(size, size).apply {
-                setMargins(0, 0, resources.getDimensionPixelSize(android.R.dimen.app_icon_size) / 4, 0)
-            }
-            
-            if (starsMap[i] == true) {
-                starImageView.setImageResource(R.drawable.ic_star)
-                starImageView.setColorFilter(getColor(R.color.gold))
-            } else {
-                starImageView.setImageResource(R.drawable.ic_star)
-                starImageView.setColorFilter(getColor(R.color.surface_variant))
-                starImageView.alpha = 0.3f
-            }
-            
-            binding.llStarsContainer.addView(starImageView)
-        }
+        // Success animation (star system removed)
     }
     
     private fun showCompletionScreen() {
-        binding.layoutQuiz.visibility = View.GONE
-        binding.layoutCompletion.visibility = View.VISIBLE
+        // Fade out quiz layout
+        binding.layoutQuiz.animate()
+            .alpha(0f)
+            .setDuration(300)
+            .withEndAction {
+                binding.layoutQuiz.visibility = View.GONE
+                binding.layoutQuiz.alpha = 1f
+                
+                // Show completion layout with animation
+                binding.layoutCompletion.alpha = 0f
+                binding.layoutCompletion.visibility = View.VISIBLE
+                binding.layoutCompletion.animate()
+                    .alpha(1f)
+                    .setDuration(400)
+                    .start()
+            }
+            .start()
         
         val statistics = viewModel.getStatistics()
         val correct = statistics["correct"] as Int
@@ -393,27 +411,88 @@ class PictureQuizActivity : AppCompatActivity() {
         val totalAttempted = statistics["totalAttempted"] as Int
         val percentage = statistics["percentage"] as Int
         val score = statistics["score"] as Int
-        val starsEarned = statistics["starsEarned"] as Int
         
-        binding.tvFinalScore.text = "Quiz Complete!"
+        // Animate text appearance
+        binding.tvFinalScore.alpha = 0f
+        binding.tvFinalScore.text = "🎉 Quiz Complete! 🎉"
+        binding.tvFinalScore.animate()
+            .alpha(1f)
+            .setDuration(500)
+            .setStartDelay(300)
+            .start()
+        
+        binding.tvScoreText.alpha = 0f
         binding.tvScoreText.text = "You scored $score out of $totalAttempted!"
+        binding.tvScoreText.animate()
+            .alpha(1f)
+            .setDuration(500)
+            .setStartDelay(600)
+            .start()
         
-        // Update statistics display
+        // Update statistics display with staggered animation
         binding.tvCorrectCount.text = "$correct"
         binding.tvWrongCount.text = "$wrong"
         binding.tvAccuracy.text = "$percentage%"
         
         // Ensure final statistics are saved to Firebase
-        // markModuleAsCompleted() is already called in nextQuestion(), but we ensure it's saved here too
         viewModel.markModuleAsCompleted()
         
-        // Show celebration animation
-        val animation = AnimationUtils.loadAnimation(this, R.anim.celebration)
-        binding.ivTrophy.startAnimation(animation)
+        // Show trophy with big celebration animation
+        binding.ivTrophy.alpha = 0f
+        binding.ivTrophy.scaleX = 0f
+        binding.ivTrophy.scaleY = 0f
+        
+        Handler(Looper.getMainLooper()).postDelayed({
+            binding.ivTrophy.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(600)
+                .setInterpolator(android.view.animation.BounceInterpolator())
+                .start()
+            
+            val celebrationAnim = AnimationUtils.loadAnimation(this, R.anim.sparkle_rotate)
+            binding.ivTrophy.startAnimation(celebrationAnim)
+        }, 400)
+        
+        // Animate buttons
+        binding.btnPlayAgain.alpha = 0f
+        binding.btnPlayAgain.translationY = 50f
+        binding.btnPlayAgain.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(400)
+            .setStartDelay(1000)
+            .start()
+        
+        binding.btnHome.alpha = 0f
+        binding.btnHome.translationY = 50f
+        binding.btnHome.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(400)
+            .setStartDelay(1100)
+            .start()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        if (::soundManager.isInitialized) {
+            soundManager.pauseBackgroundMusic()
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        if (::soundManager.isInitialized) {
+            soundManager.resumeBackgroundMusic()
+        }
     }
     
     override fun onDestroy() {
         super.onDestroy()
-        mediaPlayer?.release()
+        if (::soundManager.isInitialized) {
+            soundManager.stopBackgroundMusic()
+        }
     }
 }

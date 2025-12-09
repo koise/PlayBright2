@@ -10,6 +10,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.playbright.R
 import com.example.playbright.data.model.ModuleResponse
 import com.example.playbright.data.repository.AuthRepository
@@ -36,6 +37,7 @@ class StudentHomeActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         setupDrawer()
         setupBackPressHandler()
         setupRecyclerView()
+        setupSwipeRefresh()
         setupObservers()
         loadData()
         // progressViewModel.loadProgress() // Will be enabled when StudentProgressViewModel is properly set up
@@ -63,20 +65,110 @@ class StudentHomeActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     }
     
     private fun setupRecyclerView() {
-        moduleAdapter = ModuleAdapter { module ->
-            openModule(module)
-        }
+        moduleAdapter = ModuleAdapter(
+            onModuleClick = { module ->
+                openModule(module)
+            },
+            progressMap = emptyMap()
+        )
 
-        // Horizontal scrolling layout for modules
-        val linearLayoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        binding.rvModules.layoutManager = linearLayoutManager
+        // Grid layout with 2 columns for modules
+        val gridLayoutManager = androidx.recyclerview.widget.GridLayoutManager(this, 2)
+        binding.rvModules.layoutManager = gridLayoutManager
         binding.rvModules.adapter = moduleAdapter
+    }
+    
+    private fun setupSwipeRefresh() {
+        binding.swipeRefreshLayout.setColorSchemeColors(
+            resources.getColor(R.color.primary_blue, theme),
+            resources.getColor(R.color.success_green, theme),
+            resources.getColor(R.color.card_orange, theme)
+        )
+        
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            android.util.Log.d("StudentHome", "Pull-to-refresh triggered")
+            refreshData()
+        }
     }
     
     private fun setupObservers() {
         viewModel.modules.observe(this) { modules ->
-            moduleAdapter.submitList(modules)
-            if (modules.isEmpty()) {
+            android.util.Log.d("StudentHome", "Received ${modules.size} modules from API")
+            
+            // Filter modules to only show those with existing activities
+            // Available games:
+            // 1. Choose The Right One (picture-quiz)
+            // 2. Audio Identification (audio-identification)
+            // 3. Sequencing Cards (sequencing-cards)
+            // 4. Picture Labeling (picture-label / picture-labeling)
+            // 5. Emotion Recognition Board (emotion-recognition)
+            // 6. Choose-the-Category Activity (category-selection)
+            // 7. Yes or No Questions (yes-no-questions)
+            // 8. Tap & Repeat (tap-repeat)
+            // 9. Matching Pairs (matching-pairs)
+            // 10. Word Builder (word-builder)
+            // 11. Trace-and-Follow (trace-follow)
+            val availableModuleIds = setOf(
+                "picture-quiz",              // 1. Choose The Right One
+                "audio-identification",      // 2. Audio Identification
+                "sequencing-cards",          // 3. Sequencing Cards
+                "picture-label",             // 4. Picture Labeling
+                "picture-labeling",          // 4. Picture Labeling (alias)
+                "emotion-recognition",       // 5. Emotion Recognition Board
+                "category-selection",        // 6. Choose-the-Category Activity
+                "yes-no-questions",         // 7. Yes or No Questions
+                "tap-repeat",               // 8. Tap & Repeat
+                "matching-pairs",           // 9. Matching Pairs
+                "word-builder",             // 10. Word Builder
+                "trace-follow"              // 11. Trace-and-Follow
+            )
+            
+            val filteredModules = modules.mapNotNull { module ->
+                // Get moduleId - try direct field first, then derive from moduleNumber
+                val moduleId = when {
+                    !module.moduleId.isNullOrEmpty() -> module.moduleId
+                    module.moduleNumber != null -> when (module.moduleNumber) {
+                        1 -> "picture-quiz"              // Choose The Right One
+                        2 -> "audio-identification"      // Audio Identification
+                        3 -> "sequencing-cards"          // Sequencing Cards
+                        4 -> "picture-label"             // Picture Labeling
+                        5 -> "emotion-recognition"       // Emotion Recognition Board
+                        6 -> "category-selection"         // Choose-the-Category Activity
+                        7 -> "yes-no-questions"          // Yes or No Questions
+                        8 -> "tap-repeat"                // Tap & Repeat
+                        9 -> "matching-pairs"            // Matching Pairs
+                        10 -> "word-builder"            // Word Builder
+                        11 -> "trace-follow"            // Trace-and-Follow
+                        else -> null
+                    }
+                    else -> null
+                }
+                
+                val isAvailable = availableModuleIds.contains(moduleId)
+                android.util.Log.d("StudentHome", "Module: ${module.name}, moduleId: ${module.moduleId}, moduleNumber: ${module.moduleNumber}, derivedId: $moduleId, available: $isAvailable")
+                
+                if (isAvailable && moduleId != null) {
+                    // Return Pair of moduleId and module for duplicate removal
+                    Pair(moduleId, module)
+                } else {
+                    null
+                }
+            }
+            // Remove duplicates by moduleId (keep first occurrence)
+            .distinctBy { it.first }
+            .map { it.second }
+            
+            android.util.Log.d("StudentHome", "Filtered to ${filteredModules.size} available modules (duplicates removed)")
+            filteredModules.forEach { module ->
+                android.util.Log.d("StudentHome", "Available module: ${module.name} (${module.moduleId})")
+            }
+            
+            // Update adapter with progress data
+            val progressMap = viewModel.progressMap.value ?: emptyMap()
+            moduleAdapter.updateProgress(progressMap)
+            moduleAdapter.submitList(filteredModules)
+            
+            if (filteredModules.isEmpty()) {
                 binding.tvEmptyState.visibility = View.VISIBLE
                 binding.rvModules.visibility = View.GONE
             } else {
@@ -84,11 +176,25 @@ class StudentHomeActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 binding.rvModules.visibility = View.VISIBLE
             }
             
-            // Modules loaded successfully
+            // Stop refresh indicator when modules are loaded
+            binding.swipeRefreshLayout.isRefreshing = false
+            android.util.Log.d("StudentHome", "Modules loaded, refresh indicator stopped")
+        }
+        
+        viewModel.progressMap.observe(this) { progressMap ->
+            // Update adapter when progress changes
+            moduleAdapter.updateProgress(progressMap)
+            // Stop refresh indicator when progress is loaded
+            binding.swipeRefreshLayout.isRefreshing = false
         }
         
         viewModel.loading.observe(this) { isLoading ->
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+            // Don't show refresh indicator if initial loading (only for pull-to-refresh)
+            if (!isLoading && !binding.swipeRefreshLayout.isRefreshing) {
+                // Data loaded, ensure refresh indicator is stopped
+                binding.swipeRefreshLayout.isRefreshing = false
+            }
         }
     }
     
@@ -98,28 +204,46 @@ class StudentHomeActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     
     private fun loadData() {
         viewModel.loadModules()
+        viewModel.loadProgress()
+    }
+    
+    private fun refreshData() {
+        android.util.Log.d("StudentHome", "Refreshing data...")
+        viewModel.refreshModules()
+        // Progress will be loaded by refreshModules, but we also call it explicitly
+        viewModel.loadProgress()
     }
     
     private fun openModule(module: ModuleResponse) {
         // Get moduleId from the module, or derive it from moduleNumber if not available
         var moduleId = module.moduleId
         
-        // If moduleId is null or empty, try to derive it from moduleNumber
-        if (moduleId.isNullOrEmpty()) {
-            moduleId = when (module.moduleNumber) {
-                1 -> "picture-quiz"
-                2 -> "audio-identification"
-                3 -> "sequencing-cards"
-                4 -> "word-builder"
-                5 -> "picture-label"
-                6 -> "emotion-recognition"
-                7 -> "category-selection"
-                8 -> "story-qa"
-                9 -> "trace-follow"
-                10 -> "yes-no-questions"
-                11 -> "tap-repeat"
-                12 -> "matching-pairs"
-                13 -> "follow-instructions"
+            // If moduleId is null or empty, try to derive it from moduleNumber
+            // Available games:
+            // 1. Choose The Right One (picture-quiz)
+            // 2. Audio Identification (audio-identification)
+            // 3. Sequencing Cards (sequencing-cards)
+                // 4. Word Builder (word-builder)
+                // 5. Picture Labeling (picture-label)
+                // 6. Emotion Recognition Board (emotion-recognition)
+                // 7. Choose-the-Category Activity (category-selection)
+                // 8. Yes or No Questions (yes-no-questions)
+                // 9. Tap & Repeat (tap-repeat)
+                // 10. Matching Pairs (matching-pairs)
+                // 11. Trace-and-Follow (trace-follow)
+            if (moduleId.isNullOrEmpty()) {
+                moduleId = when (module.moduleNumber) {
+                    1 -> "picture-quiz"              // Choose The Right One
+                    2 -> "audio-identification"      // Audio Identification
+                    3 -> "sequencing-cards"          // Sequencing Cards
+                    4 -> "word-builder"              // Word Builder
+                    5 -> "picture-label"             // Picture Labeling
+                    6 -> "emotion-recognition"       // Emotion Recognition Board
+                    7 -> "category-selection"         // Choose-the-Category Activity
+                    8 -> "yes-no-questions"          // Yes or No Questions
+                    9 -> "tap-repeat"                // Tap & Repeat
+                    10 -> "matching-pairs"           // Matching Pairs
+                    11 -> "trace-follow"             // Trace-and-Follow
                 else -> null
             }
         }
@@ -131,40 +255,74 @@ class StudentHomeActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
         
         // Launch activity based on moduleId
+        // All 6 games fetch data from admin backend via their respective ViewModels
         try {
             when (moduleId) {
+                // 1. Choose The Right One
                 "picture-quiz" -> {
                     val intent = Intent(this, PictureQuizActivity::class.java)
                     intent.putExtra("MODULE_ID", moduleId)
                     startActivity(intent)
                 }
+                // 2. Audio Identification
                 "audio-identification" -> {
                     val intent = Intent(this, AudioIdentificationActivity::class.java)
                     intent.putExtra("MODULE_ID", moduleId)
                     startActivity(intent)
                 }
+                // 3. Sequencing Cards
                 "sequencing-cards" -> {
                     val intent = Intent(this, SequencingCardsActivity::class.java)
                     intent.putExtra("MODULE_ID", moduleId)
                     startActivity(intent)
                 }
+                // 4. Picture Labeling
                 "picture-label", "picture-labeling" -> {
-                    Toast.makeText(this, "Picture Labeling coming soon!", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, com.example.playbright.ui.activity.PictureLabelingActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
                 }
+                // 5. Emotion Recognition Board
                 "emotion-recognition" -> {
-                    Toast.makeText(this, "Emotion Recognition coming soon!", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, EmotionRecognitionActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
                 }
+                // 6. Choose-the-Category Activity
                 "category-selection" -> {
-                    Toast.makeText(this, "Category Selection coming soon!", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, CategorySelectionActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
                 }
+                // 7. Yes or No Questions
                 "yes-no-questions" -> {
-                    Toast.makeText(this, "Yes/No Questions coming soon!", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, YesNoQuestionsActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
                 }
+                // 8. Tap & Repeat
                 "tap-repeat" -> {
-                    Toast.makeText(this, "Tap & Repeat coming soon!", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, TapRepeatActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
                 }
+                // 9. Matching Pairs
                 "matching-pairs" -> {
-                    Toast.makeText(this, "Matching Pairs coming soon!", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, MatchingPairsActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
+                }
+                // 10. Word Builder
+                "word-builder" -> {
+                    val intent = Intent(this, WordBuilderActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
+                }
+                // 11. Trace-and-Follow
+                "trace-follow" -> {
+                    val intent = Intent(this, TraceAndFollowActivity::class.java)
+                    intent.putExtra("MODULE_ID", moduleId)
+                    startActivity(intent)
                 }
                 else -> {
                     Toast.makeText(this, "Module not available: $moduleId", Toast.LENGTH_SHORT).show()
@@ -186,17 +344,9 @@ class StudentHomeActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 val intent = Intent(this, ProfileActivity::class.java)
                 startActivity(intent)
             }
-            R.id.nav_progress -> {
-                // TODO: Navigate to progress screen
-                Toast.makeText(this, "Progress feature coming soon!", Toast.LENGTH_SHORT).show()
-            }
-            R.id.nav_achievements -> {
-                // TODO: Navigate to achievements screen
-                Toast.makeText(this, "Achievements feature coming soon!", Toast.LENGTH_SHORT).show()
-            }
             R.id.nav_settings -> {
-                // TODO: Navigate to settings screen
-                Toast.makeText(this, "Settings feature coming soon!", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, SettingsActivity::class.java)
+                startActivity(intent)
             }
             R.id.nav_logout -> {
                 // Logout user

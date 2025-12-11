@@ -57,6 +57,8 @@ class MatchingPairsActivity : AppCompatActivity() {
 
             soundManager.startBackgroundMusic()
 
+            // Show category selection first
+            showCategorySelection()
             viewModel.loadPairs()
         } catch (e: Exception) {
             android.util.Log.e("MatchingPairs", "Error in onCreate: ${e.message}", e)
@@ -110,8 +112,23 @@ class MatchingPairsActivity : AppCompatActivity() {
     }
 
     private fun setupObservers() {
+        viewModel.availableCategories.observe(this) { categories ->
+            if (categories.isNotEmpty() && viewModel.selectedCategory.value == null) {
+                // Show category selection if categories are loaded and none selected
+                showCategorySelection()
+            }
+        }
+
+        viewModel.selectedCategory.observe(this) { category ->
+            if (category != null) {
+                // Hide category selection and show game
+                hideCategorySelection()
+                showGameLayout()
+            }
+        }
+
         viewModel.currentPairs.observe(this) { pairs ->
-            if (pairs.isNotEmpty()) {
+            if (pairs.isNotEmpty() && viewModel.selectedCategory.value != null) {
                 currentPairs = pairs
                 displayPairs(pairs)
             }
@@ -157,7 +174,7 @@ class MatchingPairsActivity : AppCompatActivity() {
                 Toast.makeText(this, "🎉 Great job! All pairs matched correctly!", Toast.LENGTH_LONG).show()
                 soundManager.playSuccessSound()
                 
-                // Load new random pairs after a delay
+                // Load new random pairs from the same category after a delay
                 Handler(Looper.getMainLooper()).postDelayed({
                     binding.lineDrawingView.clearLines()
                     viewModel.resetMatches()
@@ -393,6 +410,47 @@ class MatchingPairsActivity : AppCompatActivity() {
             Toast.makeText(this, "🎉 Great job! All pairs matched!", Toast.LENGTH_LONG).show()
             soundManager.playSuccessSound()
         }, 500)
+    }
+
+    private fun showCategorySelection() {
+        binding.layoutCategorySelection.visibility = View.VISIBLE
+        binding.layoutGame.visibility = View.GONE
+        
+        // Populate category buttons
+        val categories = viewModel.availableCategories.value ?: emptyList()
+        val categoryContainer = binding.llCategoryButtons
+        
+        categoryContainer.removeAllViews()
+        
+        categories.forEach { category ->
+            val button = com.google.android.material.button.MaterialButton(this).apply {
+                text = category
+                textSize = 16f
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setPadding(32, 24, 32, 24)
+                minimumHeight = 120
+                minimumWidth = 0
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(16, 8, 16, 8)
+                }
+                setOnClickListener {
+                    viewModel.selectCategory(category)
+                    soundManager.playSuccessSound()
+                }
+            }
+            categoryContainer.addView(button)
+        }
+    }
+
+    private fun hideCategorySelection() {
+        binding.layoutCategorySelection.visibility = View.GONE
+    }
+
+    private fun showGameLayout() {
+        binding.layoutGame.visibility = View.VISIBLE
     }
 
     override fun onPause() {

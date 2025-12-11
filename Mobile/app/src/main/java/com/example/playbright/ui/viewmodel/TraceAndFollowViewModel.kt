@@ -49,8 +49,19 @@ class TraceAndFollowViewModel : ViewModel() {
     private val _completedTraces = MutableLiveData<Int>(0)
     val completedTraces: LiveData<Int> = _completedTraces
 
+    private val _score = MutableLiveData<Int>(0)
+    val score: LiveData<Int> = _score
+
+    private val _totalPoints = MutableLiveData<Int>(0)
+    val totalPoints: LiveData<Int> = _totalPoints
+
+    private val _averageSimilarity = MutableLiveData<Int>(0)
+    val averageSimilarity: LiveData<Int> = _averageSimilarity
+
     // Track which traces have been completed
     private val completedTraceIds = mutableSetOf<String>()
+    // Track similarity scores for each trace
+    private val traceSimilarities = mutableMapOf<String, Int>()
 
     fun loadTraces(traceType: String? = null) {
         _isLoading.value = true
@@ -82,10 +93,12 @@ class TraceAndFollowViewModel : ViewModel() {
                     val shuffledTraces = tracesList.shuffled().take(minOf(6, tracesList.size))
                     _traces.value = shuffledTraces
                     _totalTraces.value = shuffledTraces.size
+                    _totalPoints.value = shuffledTraces.size // Total possible points = number of traces
                     _currentTraceIndex.value = 0
                     _currentTrace.value = shuffledTraces.firstOrNull()
                     _progress.value = 0
                     _completedTraces.value = 0
+                    _score.value = 0 // Reset score when loading new traces
                     completedTraceIds.clear()
                     android.util.Log.d("TraceAndFollowViewModel", "✅ Traces loaded successfully")
                     _isLoading.value = false
@@ -103,11 +116,29 @@ class TraceAndFollowViewModel : ViewModel() {
         }
     }
 
-    fun markTraceAsCompleted() {
+    fun markTraceAsCompleted(similarity: Int = 0) {
         val currentTrace = _currentTrace.value
         if (currentTrace != null && !completedTraceIds.contains(currentTrace.id)) {
             completedTraceIds.add(currentTrace.id)
             _completedTraces.value = completedTraceIds.size
+            
+            // Store similarity score
+            traceSimilarities[currentTrace.id] = similarity
+            
+            // Calculate points: 1 point if similarity >= 80%, 0 points otherwise
+            val points = if (similarity >= 80) 1 else 0
+            val isCorrect = similarity >= 80
+            val newScore = (_score.value ?: 0) + points
+            _score.value = newScore
+            // Total possible points is already set when traces are loaded (number of traces)
+            // No need to update it here as it's constant
+            
+            // Calculate average similarity
+            val avgSimilarity = traceSimilarities.values.average().toInt()
+            _averageSimilarity.value = avgSimilarity
+            
+            // Track this individual attempt in backend
+            updateProgressInBackend(currentTrace.id, isCorrect)
             
             val total = _totalTraces.value ?: 1
             _progress.value = (completedTraceIds.size * 100) / total
@@ -116,6 +147,36 @@ class TraceAndFollowViewModel : ViewModel() {
             if (completedTraceIds.size >= total) {
                 _isCompleted.value = true
                 markModuleAsCompleted()
+            }
+        }
+    }
+
+    private fun updateProgressInBackend(traceId: String, isCorrect: Boolean) {
+        viewModelScope.launch {
+            try {
+                val studentId = authRepository.getCurrentUser()?.studentId 
+                    ?: authRepository.getCurrentUser()?.id
+                
+                if (studentId != null) {
+                    val correctAnswers = traceSimilarities.values.count { it >= 80 }
+                    val wrongAnswers = completedTraceIds.size - correctAnswers
+                    
+                    val request = UpdateProgressRequest(
+                        studentId = studentId,
+                        moduleId = MODULE_ID,
+                        questionId = traceId,
+                        isCorrect = isCorrect,
+                        score = _score.value,
+                        totalQuestions = _totalTraces.value,
+                        currentQuestion = _completedTraces.value,
+                        correctAnswers = correctAnswers,
+                        wrongAnswers = wrongAnswers
+                    )
+                    repository.updateProgress(studentId, MODULE_ID, request)
+                    android.util.Log.d("TraceAndFollowViewModel", "✅ Progress updated: traceId=$traceId, isCorrect=$isCorrect, similarity=${traceSimilarities[traceId]}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("TraceAndFollowViewModel", "❌ Failed to update progress: ${e.message}")
             }
         }
     }
@@ -140,7 +201,11 @@ class TraceAndFollowViewModel : ViewModel() {
         _progress.value = 0
         _completedTraces.value = 0
         _isCompleted.value = false
+        _score.value = 0
+        _totalPoints.value = 0
+        _averageSimilarity.value = 0
         completedTraceIds.clear()
+        traceSimilarities.clear()
     }
 
     fun getProgress(): Int {
@@ -156,15 +221,21 @@ class TraceAndFollowViewModel : ViewModel() {
                 if (studentId != null) {
                     val totalTraces = _totalTraces.value ?: 0
                     val completedTraces = _completedTraces.value ?: 0
+                    val finalScore = _score.value ?: 0
+                    val avgSimilarity = _averageSimilarity.value ?: 0
+                    
+                    // Calculate correct answers based on similarity (>=80% = correct, earns 1 point)
+                    val correctAnswers = traceSimilarities.values.count { it >= 80 }
+                    val wrongAnswers = completedTraces - correctAnswers
                     
                     val request = UpdateProgressRequest(
                         studentId = studentId,
                         moduleId = MODULE_ID,
-                        score = completedTraces,
+                        score = finalScore,
                         totalQuestions = totalTraces,
                         currentQuestion = totalTraces,
-                        correctAnswers = completedTraces,
-                        wrongAnswers = 0
+                        correctAnswers = correctAnswers,
+                        wrongAnswers = wrongAnswers
                     )
                     
                     repository.updateProgress(studentId, MODULE_ID, request)
@@ -177,10 +248,25 @@ class TraceAndFollowViewModel : ViewModel() {
     }
 
     fun getStatistics(): Map<String, Any> {
+        val totalTraces = _totalTraces.value ?: 0
+        val completedTraces = _completedTraces.value ?: 0
+        val score = _score.value ?: 0
+        val totalPoints = _totalPoints.value ?: 0
+        val avgSimilarity = _averageSimilarity.value ?: 0
+        val correctAnswers = traceSimilarities.values.count { it >= 80 }
+        val wrongAnswers = completedTraces - correctAnswers
+        val percentage = if (totalTraces > 0) (correctAnswers * 100) / totalTraces else 0
+        
         return mapOf(
-            "totalTraces" to (_totalTraces.value ?: 0),
-            "completedTraces" to (_completedTraces.value ?: 0),
-            "progress" to (_progress.value ?: 0)
+            "totalTraces" to totalTraces,
+            "completedTraces" to completedTraces,
+            "progress" to (_progress.value ?: 0),
+            "score" to score,
+            "totalPoints" to totalPoints,
+            "averageSimilarity" to avgSimilarity,
+            "correct" to correctAnswers,
+            "wrong" to wrongAnswers,
+            "percentage" to percentage
         )
     }
 }

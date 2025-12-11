@@ -243,23 +243,29 @@ class TapRepeatActivity : AppCompatActivity() {
 
                 override fun onError(error: Int) {
                     val errorMessage = when (error) {
-                        SpeechRecognizer.ERROR_AUDIO -> "Audio error"
-                        SpeechRecognizer.ERROR_CLIENT -> "Client error"
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
-                        SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                        SpeechRecognizer.ERROR_NO_MATCH -> "No match found"
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-                        SpeechRecognizer.ERROR_SERVER -> "Server error"
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
-                        else -> "Unknown error"
+                        SpeechRecognizer.ERROR_AUDIO -> "Audio error - please check your microphone"
+                        SpeechRecognizer.ERROR_CLIENT -> "Client error - please try again"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
+                        SpeechRecognizer.ERROR_NETWORK -> "Network error - check your connection"
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout - please try again"
+                        SpeechRecognizer.ERROR_NO_MATCH -> "Could not understand. Please speak clearly and try again."
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy - please wait a moment"
+                        SpeechRecognizer.ERROR_SERVER -> "Server error - please try again"
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout - please speak louder"
+                        else -> "Unknown error - please try again"
                     }
                     android.util.Log.e("TapRepeat", "❌ Speech recognition error: $errorMessage ($error)")
                     showListeningIndicator(false)
                     isListening = false
 
-                    if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-                        Toast.makeText(this@TapRepeatActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                    // Always show error message to help user understand what went wrong
+                    Toast.makeText(this@TapRepeatActivity, errorMessage, Toast.LENGTH_LONG).show()
+                    
+                    // Re-enable record button for retry (except for permission errors)
+                    if (error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            binding.btnRecord.isEnabled = hasListened
+                        }, 1000)
                     }
                 }
 
@@ -268,16 +274,23 @@ class TapRepeatActivity : AppCompatActivity() {
                     val confidence = results?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
                     
                     if (matches != null && matches.isNotEmpty()) {
-                        val recognizedText = matches[0]
-                        android.util.Log.d("TapRepeat", "✅ Recognized: '$recognizedText'")
+                        val recognizedText = matches[0].trim()
+                        val confidenceScore = if (confidence != null && confidence.isNotEmpty()) confidence[0] else 0f
+                        android.util.Log.d("TapRepeat", "✅ Recognized: '$recognizedText' (confidence: $confidenceScore)")
                         
                         val currentWord = viewModel.currentWord.value
                         if (currentWord != null) {
-                            // Check if recognized text matches the word (case-insensitive)
-                            val isCorrect = recognizedText.trim().equals(currentWord.word, ignoreCase = true)
+                            // Normalize both texts for comparison (remove extra spaces, lowercase)
+                            val normalizedRecognized = recognizedText.lowercase().trim()
+                            val normalizedWord = currentWord.word.lowercase().trim()
                             
-                            // Mark word as attempted
-                            viewModel.markWordAsAttempted(currentWord.id)
+                            // Check if recognized text matches the word (case-insensitive, flexible matching)
+                            val isCorrect = normalizedRecognized == normalizedWord || 
+                                          normalizedRecognized.contains(normalizedWord) ||
+                                          normalizedWord.contains(normalizedRecognized)
+                            
+                            // Mark word as attempted and track in backend
+                            viewModel.markWordAsAttempted(currentWord.id, isCorrect)
                             
                             // Show result
                             showSpeechResult(recognizedText, isCorrect)
@@ -290,6 +303,12 @@ class TapRepeatActivity : AppCompatActivity() {
                                 binding.btnRecord.isEnabled = false
                             }, 3000)
                         }
+                    } else {
+                        // No results - show error and allow retry
+                        android.util.Log.w("TapRepeat", "⚠️ No speech recognition results")
+                        Toast.makeText(this@TapRepeatActivity, "Could not recognize speech. Please try again.", Toast.LENGTH_SHORT).show()
+                        isListening = false
+                        binding.btnRecord.isEnabled = true
                     }
                     isListening = false
                 }
@@ -297,7 +316,10 @@ class TapRepeatActivity : AppCompatActivity() {
                 override fun onPartialResults(partialResults: Bundle?) {
                     val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (matches != null && matches.isNotEmpty()) {
-                        android.util.Log.d("TapRepeat", "🎤 Partial result: ${matches[0]}")
+                        val partialText = matches[0]
+                        android.util.Log.d("TapRepeat", "🎤 Partial result: $partialText")
+                        // Optionally show partial results in UI for real-time feedback
+                        // binding.tvSpeechResult.text = "Listening: $partialText..."
                     }
                 }
 
@@ -327,26 +349,39 @@ class TapRepeatActivity : AppCompatActivity() {
 
     private fun startSpeechRecognition() {
         if (speechRecognizer == null || !SpeechRecognizer.isRecognitionAvailable(this)) {
-            Toast.makeText(this, "Speech recognition not available", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Speech recognition not available on this device", Toast.LENGTH_LONG).show()
+            binding.btnRecord.isEnabled = false
             return
         }
+
+        // Check if already listening
+        if (isListening) {
+            android.util.Log.w("TapRepeat", "⚠️ Already listening, ignoring request")
+            return
+        }
+
+        val currentWord = viewModel.currentWord.value
+        val promptText = currentWord?.word ?: "Say the word!"
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Say the word!")
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3) // Get top 3 results for better matching
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Say: $promptText")
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         }
 
         try {
             speechRecognizer?.startListening(intent)
             isListening = true
             binding.cardSpeechResult.visibility = View.GONE
-            android.util.Log.d("TapRepeat", "🎤 Started listening")
+            binding.btnRecord.isEnabled = false // Disable while listening
+            android.util.Log.d("TapRepeat", "🎤 Started listening for: $promptText")
         } catch (e: Exception) {
             android.util.Log.e("TapRepeat", "❌ Error starting speech recognition: ${e.message}", e)
-            Toast.makeText(this, "Error starting speech recognition: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error starting speech recognition: ${e.message}", Toast.LENGTH_LONG).show()
             isListening = false
+            binding.btnRecord.isEnabled = hasListened // Re-enable if user has listened
         }
     }
 

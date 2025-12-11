@@ -35,6 +35,12 @@ class MatchingPairsViewModel : ViewModel() {
     private val _matchedPairs = MutableLiveData<Set<String>>(emptySet())
     val matchedPairs: LiveData<Set<String>> = _matchedPairs
 
+    private val _availableCategories = MutableLiveData<List<String>>(emptyList())
+    val availableCategories: LiveData<List<String>> = _availableCategories
+
+    private val _selectedCategory = MutableLiveData<String?>()
+    val selectedCategory: LiveData<String?> = _selectedCategory
+
     private val matchedPairsSet = mutableSetOf<String>()
 
     fun loadPairs() {
@@ -58,7 +64,12 @@ class MatchingPairsViewModel : ViewModel() {
                     _pairs.value = pairsList
 
                     if (pairsList.isNotEmpty()) {
-                        loadRandomPairs()
+                        // Extract unique categories from pairs
+                        val categories = pairsList.mapNotNull { it.pairType }
+                            .distinct()
+                            .sorted()
+                        _availableCategories.value = categories
+                        android.util.Log.d("MatchingPairsViewModel", "Found ${categories.size} categories: $categories")
                         android.util.Log.d("MatchingPairsViewModel", "✅ Pairs loaded successfully")
                     } else {
                         android.util.Log.w("MatchingPairsViewModel", "⚠️ No pairs found for module: $MODULE_ID")
@@ -79,17 +90,37 @@ class MatchingPairsViewModel : ViewModel() {
         }
     }
 
+    fun selectCategory(category: String) {
+        _selectedCategory.value = category
+        android.util.Log.d("MatchingPairsViewModel", "Category selected: $category")
+        loadRandomPairs()
+    }
+
     fun loadRandomPairs() {
         val allPairs = _pairs.value ?: emptyList()
-        if (allPairs.size >= 4) {
+        val selectedCat = _selectedCategory.value
+        
+        // Filter pairs by selected category
+        val filteredPairs = if (selectedCat != null) {
+            allPairs.filter { it.pairType == selectedCat }
+        } else {
+            allPairs
+        }
+        
+        android.util.Log.d("MatchingPairsViewModel", "Loading pairs for category: $selectedCat, filtered count: ${filteredPairs.size}")
+        
+        if (filteredPairs.size >= 4) {
             // Select 4 random pairs
-            val randomPairs = allPairs.shuffled().take(4)
+            val randomPairs = filteredPairs.shuffled().take(4)
             _currentPairs.value = randomPairs
             resetMatches()
-        } else if (allPairs.isNotEmpty()) {
+        } else if (filteredPairs.isNotEmpty()) {
             // Use all available pairs if less than 4
-            _currentPairs.value = allPairs.shuffled()
+            _currentPairs.value = filteredPairs.shuffled()
             resetMatches()
+        } else {
+            android.util.Log.w("MatchingPairsViewModel", "No pairs available for category: $selectedCat")
+            _error.value = "No pairs available for selected category."
         }
     }
 
@@ -121,4 +152,5 @@ class MatchingPairsViewModel : ViewModel() {
         return _currentPairs.value?.find { it.id == pairId }
     }
 }
+
 

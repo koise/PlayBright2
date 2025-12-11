@@ -1,5 +1,7 @@
 package com.example.playbright.ui.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -11,6 +13,12 @@ import com.example.playbright.data.network.ApiErrorHandler
 import com.example.playbright.data.repository.ApiRepository
 import com.example.playbright.data.repository.AuthRepository
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 class ProfileViewModel : ViewModel() {
     
@@ -126,6 +134,56 @@ class ProfileViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = ApiErrorHandler.handleError(e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    fun uploadProfileImage(uri: Uri, context: Context, onSuccess: (String) -> Unit) {
+        _isLoading.value = true
+        _error.value = null
+        
+        viewModelScope.launch {
+            try {
+                // Create a temporary file from URI
+                val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+                val tempFile = File(context.cacheDir, "profile_${System.currentTimeMillis()}.jpg")
+                inputStream?.use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                if (tempFile.exists()) {
+                    // Create multipart request
+                    val requestFile = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    val imagePart = MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
+                    
+                    // Upload image
+                    val response = repository.uploadImage(imagePart, "profile-photos")
+                    
+                    if (response.isSuccessful) {
+                        val uploadResponse = response.body()
+                        val imageUrl = uploadResponse?.url
+                        if (imageUrl != null && imageUrl.isNotEmpty()) {
+                            onSuccess(imageUrl)
+                        } else {
+                            _error.value = "Failed to get image URL from response"
+                        }
+                    } else {
+                        val errorBody = response.errorBody()?.string() ?: response.message()
+                        _error.value = "Failed to upload image: $errorBody"
+                    }
+                    
+                    // Clean up temp file
+                    tempFile.delete()
+                } else {
+                    _error.value = "Failed to create temporary file"
+                }
+            } catch (e: Exception) {
+                _error.value = ApiErrorHandler.handleError(e)
+                android.util.Log.e("ProfileViewModel", "Image upload error", e)
             } finally {
                 _isLoading.value = false
             }

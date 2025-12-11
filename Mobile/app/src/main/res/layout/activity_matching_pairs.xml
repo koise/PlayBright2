@@ -61,12 +61,70 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <!-- Main Content with Items -->
+        <!-- Category Selection Layout -->
         <LinearLayout
+            android:id="@+id/layoutCategorySelection"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:padding="8dp">
+            android:gravity="center"
+            android:padding="24dp"
+            android:background="@color/bg_light">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="8dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="32dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Select Category"
+                        android:textSize="28sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:layout_gravity="center"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Choose a category to start matching pairs"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_gravity="center"
+                        android:layout_marginBottom="32dp"
+                        android:gravity="center" />
+
+                    <LinearLayout
+                        android:id="@+id/llCategoryButtons"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+        <!-- Main Content with Items -->
+        <LinearLayout
+            android:id="@+id/layoutGame"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:visibility="gone">
             
             <!-- Cards Container -->
             <LinearLayout

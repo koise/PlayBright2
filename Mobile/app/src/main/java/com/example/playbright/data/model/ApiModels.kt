@@ -511,7 +511,13 @@ data class TraceAndFollowResponse(
     @SerializedName("category") val category: String?,
     @SerializedName("difficulty") val difficulty: String?,
     @SerializedName("moduleId") val moduleId: String,
-    @SerializedName("status") val status: String
+    @SerializedName("status") val status: String,
+    @SerializedName("referenceDrawingPoints") val referenceDrawingPoints: List<DrawingPoint>? = null
+)
+
+data class DrawingPoint(
+    @SerializedName("x") val x: Float,
+    @SerializedName("y") val y: Float
 )
 
 // ==================== PROGRESS MODELS ====================

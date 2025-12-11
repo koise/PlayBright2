@@ -5,13 +5,16 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.playbright.data.model.TapRepeatResponse
+import com.example.playbright.data.model.UpdateProgressRequest
 import com.example.playbright.data.network.ApiErrorHandler
 import com.example.playbright.data.repository.ApiRepository
+import com.example.playbright.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
 class TapRepeatViewModel : ViewModel() {
 
     private val repository = ApiRepository()
+    private val authRepository = AuthRepository()
     private var MODULE_ID = "tap-repeat" // Default module ID
     
     fun setModuleId(moduleId: String) {
@@ -43,6 +46,12 @@ class TapRepeatViewModel : ViewModel() {
 
     private val _completedWords = MutableLiveData<Int>(0)
     val completedWords: LiveData<Int> = _completedWords
+
+    private val _correctAnswers = MutableLiveData<Int>(0)
+    val correctAnswers: LiveData<Int> = _correctAnswers
+
+    private val _wrongAnswers = MutableLiveData<Int>(0)
+    val wrongAnswers: LiveData<Int> = _wrongAnswers
 
     // Track which words have been attempted
     private val attemptedWords = mutableSetOf<String>()
@@ -102,13 +111,75 @@ class TapRepeatViewModel : ViewModel() {
             _currentWord.value = wordsList[currentIndex + 1]
         } else {
             _isCompleted.value = true
+            markModuleAsCompleted()
         }
     }
 
-    fun markWordAsAttempted(wordId: String) {
+    fun markWordAsAttempted(wordId: String, isCorrect: Boolean) {
+        // Track attempt in backend
+        updateProgressInBackend(wordId, isCorrect)
+        
+        // Track correct/wrong answers
+        if (isCorrect) {
+            _correctAnswers.value = (_correctAnswers.value ?: 0) + 1
+        } else {
+            _wrongAnswers.value = (_wrongAnswers.value ?: 0) + 1
+        }
+        
         if (!attemptedWords.contains(wordId)) {
             attemptedWords.add(wordId)
             _completedWords.value = attemptedWords.size
+        }
+    }
+
+    private fun updateProgressInBackend(wordId: String, isCorrect: Boolean) {
+        val currentUser = authRepository.getCurrentUser() ?: return
+        val studentId = currentUser.studentId ?: currentUser.id
+        
+        viewModelScope.launch {
+            try {
+                val request = UpdateProgressRequest(
+                    studentId = studentId,
+                    moduleId = MODULE_ID,
+                    questionId = wordId,
+                    isCorrect = isCorrect,
+                    score = _correctAnswers.value,
+                    totalQuestions = _totalWords.value,
+                    currentQuestion = _currentWordIndex.value,
+                    correctAnswers = _correctAnswers.value,
+                    wrongAnswers = _wrongAnswers.value
+                )
+                repository.updateProgress(studentId, MODULE_ID, request)
+                android.util.Log.d("TapRepeatViewModel", "✅ Progress updated: wordId=$wordId, isCorrect=$isCorrect")
+            } catch (e: Exception) {
+                android.util.Log.e("TapRepeatViewModel", "❌ Failed to update progress: ${e.message}")
+            }
+        }
+    }
+
+    private fun markModuleAsCompleted() {
+        val currentUser = authRepository.getCurrentUser() ?: return
+        val studentId = currentUser.studentId ?: currentUser.id
+        val wordsList = _words.value ?: emptyList()
+        
+        viewModelScope.launch {
+            try {
+                val request = UpdateProgressRequest(
+                    studentId = studentId,
+                    moduleId = MODULE_ID,
+                    questionId = null,
+                    isCorrect = null,
+                    score = _correctAnswers.value,
+                    totalQuestions = wordsList.size,
+                    currentQuestion = wordsList.size,
+                    correctAnswers = _correctAnswers.value,
+                    wrongAnswers = _wrongAnswers.value
+                )
+                repository.updateProgress(studentId, MODULE_ID, request)
+                android.util.Log.d("TapRepeatViewModel", "✅ Module marked as completed")
+            } catch (e: Exception) {
+                android.util.Log.e("TapRepeatViewModel", "❌ Failed to mark module as completed: ${e.message}")
+            }
         }
     }
 
@@ -121,6 +192,8 @@ class TapRepeatViewModel : ViewModel() {
         _isCompleted.value = false
         attemptedWords.clear()
         _completedWords.value = 0
+        _correctAnswers.value = 0
+        _wrongAnswers.value = 0
 
         if (reshuffledWords.isNotEmpty()) {
             _currentWord.value = reshuffledWords[0]
@@ -137,4 +210,6 @@ class TapRepeatViewModel : ViewModel() {
         }
     }
 }
+
+
 

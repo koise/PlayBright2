@@ -4,14 +4,14 @@
   "private": true,
   "workspaces": [
     "shared",
-    "Web/frontend",
-    "Web/backend"
+    "PlayBrightAdmin/frontend",
+    "PlayBrightAdmin/backend"
   ],
   "scripts": {
-    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --workspace=Web/backend\" \"npm run dev --workspace=Web/frontend\"",
-    "dev:web": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --workspace=Web/backend\" \"npm run dev --workspace=Web/frontend\"",
-    "dev:backend": "npm run dev --workspace=Web/backend",
-    "dev:frontend": "npm run dev --workspace=Web/frontend",
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --workspace=PlayBrightAdmin/backend\" \"npm run dev --workspace=PlayBrightAdmin/frontend\"",
+    "dev:admin": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --workspace=PlayBrightAdmin/backend\" \"npm run dev --workspace=PlayBrightAdmin/frontend\"",
+    "dev:backend": "npm run dev --workspace=PlayBrightAdmin/backend",
+    "dev:frontend": "npm run dev --workspace=PlayBrightAdmin/frontend",
     "install:all": "npm install",
     "build": "npm run build --workspaces",
     "clean": "npm run clean --workspaces && rm -rf node_modules"
@@ -22,5 +22,9 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
+    "firebase": "^12.8.0"
   }
 }
